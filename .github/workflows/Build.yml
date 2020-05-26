@@ -1,0 +1,47 @@
+name: Build
+
+on:
+  push:
+    branches: [ master, development ]
+    tags-ignore: [ v* ]
+  pull_request:
+    branches: [ master, development ]
+    tags-ignore: [ v* ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Setup .NET Core
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 3.1.201
+
+    # - name: Install Report Generator
+    #   run: dotnet tool install -g dotnet-reportgenerator-globaltool
+
+    - name: Build
+      run: dotnet build --configuration Release
+
+    - name: Test
+      run: dotnet test --verbosity normal /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura
+
+    - name: Generate Coverage Report
+      # run: reportgenerator -reports:**/coverage.cobertura.xml -targetdir:Report -reporttypes:HtmlInline_AzurePipelines;Cobertura
+      uses: danielpalme/ReportGenerator-GitHub-Action@4.5.8
+      with:
+        reports: "**/coverage.cobertura.xml"
+        targetdir: "Report"
+        reporttypes: "HtmlInline;Cobertura"
+        tag: '${{ github.run_number }}_${{ github.run_id }}'
+
+    - name: Publish Coverage Report
+      uses: 5monkeys/cobertura-action@master
+      with:
+        path: Report/Cobertura.xml
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        minimum_coverage: 75
