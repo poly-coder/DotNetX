@@ -7,15 +7,28 @@ namespace DotNetX
 {
     public static class EnumerableExtensions
     {
+
+        #region [ Singleton ]
+
         public static IEnumerable<T> Singleton<T>(this T value)
         {
             yield return value;
         }
 
+        #endregion [ Singleton ]
+
+
+        #region [ Concatenate ]
+
         public static string Concatenate(this IEnumerable<string> source, string separator = ", ")
         {
             return String.Join(separator, source);
         }
+
+        #endregion [ Concatenate ]
+
+
+        #region [ ForEach ]
 
         public static void ForEach<T>(this IEnumerable<T> source, Action<T> action)
         {
@@ -24,6 +37,11 @@ namespace DotNetX
                 action(item);
             }
         }
+
+        #endregion [ ForEach ]
+
+
+        #region [ StartWith ]
 
         public static IEnumerable<T> StartWith<T>(this IEnumerable<T> source, IEnumerable<T> toPrepend)
         {
@@ -35,6 +53,10 @@ namespace DotNetX
             return toPrepend.Concat(source);
         }
 
+        #endregion [ StartWith ]
+
+
+        #region [ IndexOf / LastIndexOf ]
 
         public static int IndexOf<T>(this IReadOnlyList<T> source, Func<T, bool> predicate)
         {
@@ -54,63 +76,41 @@ namespace DotNetX
             return source.IndexOf(e => comparer.Equals(e, item));
         }
 
+        public static int LastIndexOf<T>(this IReadOnlyList<T> source, Func<T, bool> predicate)
+        {
+            for (int i = source.Count - 1; i >= 0; i--)
+            {
+                if (predicate(source[i]))
+                {
+                    return i;
+                }
+            }
+            return -1;
+        }
+
+        public static int LastIndexOf<T>(this IReadOnlyList<T> source, T item, IEqualityComparer<T> comparer = null)
+        {
+            comparer = comparer ?? EqualityComparer<T>.Default;
+            return source.LastIndexOf(e => comparer.Equals(e, item));
+        }
+
+        #endregion [ IndexOf / LastIndexOf ]
+
+
+        #region [ IsEqualTo / GetCollectionHashCode ]
 
         public static bool IsEqualTo<T>(this IEnumerable<T> source1, IEnumerable<T> source2, IEqualityComparer<T> comparer = null)
         {
             if ((source1 == null) != (source2 == null)) return false;
             if (source1 == null) return true;
 
-            if (source1 is T[] array1 && source2 is T[] array2)
-            {
-                return array1.IsEqualTo(array2, comparer);
-            }
-
             if (source1 is IReadOnlyCollection<T> collection1 && source2 is IReadOnlyCollection<T> collection2)
             {
                 return collection1.IsEqualTo(collection2, comparer);
             }
 
-            if (source1 is ICollection<T> oldcollection1 && source2 is ICollection<T> oldcollection2)
-            {
-                return oldcollection1.IsEqualTo(oldcollection2, comparer);
-            }
-
             comparer = comparer ?? EqualityComparer<T>.Default;
-            using var enumerator1 = source1.GetEnumerator();
-            using var enumerator2 = source2.GetEnumerator();
-            while (true)
-            {
-                var moved1 = enumerator1.MoveNext();
-                var moved2 = enumerator2.MoveNext();
-                if (moved1 != moved2) return false;
-                if (!moved1) return true;
-                if (!comparer.Equals(enumerator1.Current, enumerator2.Current)) return false;
-            }
-        }
-
-        public static bool IsEqualTo<T>(this ICollection<T> source1, ICollection<T> source2, IEqualityComparer<T> comparer = null)
-        {
-            if ((source1 == null) != (source2 == null)) return false;
-            if (source1 == null) return true;
-
-            if (source1 is IReadOnlyCollection<T> collection1 && source2 is IReadOnlyCollection<T> collection2)
-            {
-                return collection1.IsEqualTo(collection2, comparer);
-            }
-
-            if (source1.Count != source2.Count) return false;
-
-            comparer = comparer ?? EqualityComparer<T>.Default;
-            using var enumerator1 = source1.GetEnumerator();
-            using var enumerator2 = source2.GetEnumerator();
-            while (true)
-            {
-                var moved1 = enumerator1.MoveNext();
-                var moved2 = enumerator2.MoveNext();
-                if (moved1 != moved2) return false; // Weird, count were equal. This should not happend
-                if (!moved1) return true;
-                if (!comparer.Equals(enumerator1.Current, enumerator2.Current)) return false;
-            }
+            return AreEqualEnumerables(source1, source2, comparer);
         }
 
         public static bool IsEqualTo<T>(this IReadOnlyCollection<T> source1, IReadOnlyCollection<T> source2, IEqualityComparer<T> comparer = null)
@@ -126,16 +126,7 @@ namespace DotNetX
             if (source1.Count != source2.Count) return false;
 
             comparer = comparer ?? EqualityComparer<T>.Default;
-            using var enumerator1 = source1.GetEnumerator();
-            using var enumerator2 = source2.GetEnumerator();
-            while (true)
-            {
-                var moved1 = enumerator1.MoveNext();
-                var moved2 = enumerator2.MoveNext();
-                if (moved1 != moved2) return false; // Weird, count were equal. This should not happend
-                if (!moved1) return true;
-                if (!comparer.Equals(enumerator1.Current, enumerator2.Current)) return false;
-            }
+            return AreEqualEnumerables(source1, source2, comparer);
         }
 
         public static bool IsEqualTo<T>(this IReadOnlyList<T> source1, IReadOnlyList<T> source2, IEqualityComparer<T> comparer = null)
@@ -167,6 +158,20 @@ namespace DotNetX
             return ((IStructuralEquatable)source1).Equals(other: source2, comparer: (IEqualityComparer)comparer ?? EqualityComparer<T>.Default);
         }
 
+        private static bool AreEqualEnumerables<T>(IEnumerable<T> source1, IEnumerable<T> source2, IEqualityComparer<T> comparer)
+        {
+            using var enumerator1 = source1.GetEnumerator();
+            using var enumerator2 = source2.GetEnumerator();
+            while (true)
+            {
+                var moved1 = enumerator1.MoveNext();
+                var moved2 = enumerator2.MoveNext();
+                if (moved1 != moved2) return false;
+                if (!moved1) return true;
+                if (!comparer.Equals(enumerator1.Current, enumerator2.Current)) return false;
+            }
+        }
+
 
 
         public static int GetCollectionHashCode<T>(this IEnumerable<T> source, IEqualityComparer<T> comparer = null)
@@ -183,15 +188,7 @@ namespace DotNetX
                 return array.GetCollectionHashCode(comparer);
             }
 
-            var code = new HashCode();
-            comparer = comparer ?? EqualityComparer<T>.Default;
-            using var enumerator = source.GetEnumerator();
-            while (true)
-            {
-                if (!enumerator.MoveNext()) break;
-                code.Add(enumerator.Current, comparer);
-            }
-            return code.ToHashCode();
+            return ComputeEnumerableHashCode(source, comparer ?? EqualityComparer<T>.Default);
         }
 
         public static int GetCollectionHashCode<T>(this IReadOnlyCollection<T> source, IEqualityComparer<T> comparer = null)
@@ -203,15 +200,7 @@ namespace DotNetX
                 return array.GetCollectionHashCode(comparer);
             }
 
-            var code = new HashCode();
-            comparer = comparer ?? EqualityComparer<T>.Default;
-            using var enumerator = source.GetEnumerator();
-            while (true)
-            {
-                if (!enumerator.MoveNext()) break;
-                code.Add(enumerator.Current, comparer);
-            }
-            return code.ToHashCode();
+            return ComputeEnumerableHashCode(source, comparer ?? EqualityComparer<T>.Default);
         }
 
         public static int GetCollectionHashCode<T>(this IReadOnlyList<T> source, IEqualityComparer<T> comparer = null)
@@ -240,6 +229,22 @@ namespace DotNetX
             return ((IStructuralEquatable)source).GetHashCode(comparer: (IEqualityComparer)comparer ?? EqualityComparer<T>.Default);
         }
 
+        private static int ComputeEnumerableHashCode<T>(IEnumerable<T> source, IEqualityComparer<T> comparer)
+        {
+            var code = new HashCode();
+            using var enumerator = source.GetEnumerator();
+            while (true)
+            {
+                if (!enumerator.MoveNext()) break;
+                code.Add(enumerator.Current, comparer);
+            }
+            return code.ToHashCode();
+        }
+
+        #endregion [ IsEqualTo / GetCollectionHashCode ]
+
+        
+        #region [ Graph Traversal ]
 
         public static IEnumerable<T> CyclicGraphTraverse<T, K>(
             this IEnumerable<T> source,
@@ -450,17 +455,36 @@ namespace DotNetX
             this T source,
             Func<T, T> getNext,
             Func<T, K> getKey,
+            Func<T, bool> accepted,
             IEqualityComparer<K> comparer = null)
-            where T : class
         {
-            return source.DepthFirstSearch(
+            return source.Singleton().Where(accepted).DepthFirstSearch(
                 current =>
                 {
                     var next = getNext(current);
-                    return next != null ? next.Singleton() : null;
+                    return accepted(next) ? next.Singleton() : null;
                 },
                 getKey,
                 comparer);
+        }
+
+        public static IEnumerable<T> Unfold<T>(
+            this T source,
+            Func<T, T> getNext,
+            Func<T, bool> accepted,
+            IEqualityComparer<T> comparer = null)
+        {
+            return source.Unfold(getNext, Funcs.Identity, accepted, comparer);
+        }
+
+        public static IEnumerable<T> Unfold<T, K>(
+            this T source,
+            Func<T, T> getNext,
+            Func<T, K> getKey,
+            IEqualityComparer<K> comparer = null)
+            where T : class
+        {
+            return source.Unfold(getNext, getKey, Predicate.IsNonNull, comparer);
         }
 
         public static IEnumerable<T> Unfold<T>(
@@ -471,6 +495,8 @@ namespace DotNetX
         {
             return source.Unfold(getNext, Funcs.Identity, comparer);
         }
+
+        #endregion [ Graph Traversal ]
     }
 
     public class StructuralEnumerableEqualityComparer<T> : IEqualityComparer<IEnumerable<T>>, IEqualityComparer

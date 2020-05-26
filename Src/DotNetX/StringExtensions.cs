@@ -6,10 +6,15 @@ namespace DotNetX
 {
     public static class StringExtensions
     {
+        #region [ IsNullOrEmpty / IsNullOrWhiteSpace ]
+
         public static bool IsNullOrEmpty(this string value) => string.IsNullOrEmpty(value);
 
         public static bool IsNullOrWhiteSpace(this string value) => string.IsNullOrWhiteSpace(value);
 
+        #endregion [ IsNullOrEmpty / IsNullOrWhiteSpace ]
+
+        #region [ RemoveSuffix / RemovePrefix ]
 
         public static string RemoveSuffix(this string value, string suffix)
         {
@@ -18,6 +23,17 @@ namespace DotNetX
             return value.Substring(0, value.Length - suffix.Length);
         }
 
+        public static string RemovePrefix(this string value, string prefix)
+        {
+            if (value == null) return null;
+            if (value.Length <= prefix.Length || !value.StartsWith(prefix)) return value;
+            return value.Substring(prefix.Length);
+        }
+
+        #endregion [ RemoveSuffix / RemovePrefix ]
+
+
+        #region [ Before[Last][OrAll] / After[Last][OrAll] ]
 
         public static string Before(this string text, string separator, StringComparison comparisonType = StringComparison.Ordinal)
             => BeforeAux(text, text.IndexOf(separator, comparisonType));
@@ -30,6 +46,18 @@ namespace DotNetX
 
         public static string BeforeLast(this string text, char separator)
             => BeforeAux(text, text.LastIndexOf(separator));
+
+        public static string BeforeOrAll(this string text, string separator, StringComparison comparisonType = StringComparison.Ordinal)
+            => Before(text, separator, comparisonType) ?? text;
+
+        public static string BeforeOrAll(this string text, char separator)
+            => Before(text, separator) ?? text;
+
+        public static string BeforeLastOrAll(this string text, string separator, StringComparison comparisonType = StringComparison.Ordinal)
+            => BeforeLast(text, separator, comparisonType) ?? text;
+
+        public static string BeforeLastOrAll(this string text, char separator)
+            => BeforeLast(text, separator) ?? text;
 
         private static string BeforeAux(string text, int index) => index switch {
             -1 => null,
@@ -49,12 +77,27 @@ namespace DotNetX
         public static string AfterLast(this string text, char separator)
             => AfterAux(text, text.LastIndexOf(separator), 1);
 
+        public static string AfterOrAll(this string text, string separator, StringComparison comparisonType = StringComparison.Ordinal)
+            => After(text, separator, comparisonType) ?? text;
+
+        public static string AfterOrAll(this string text, char separator)
+            => After(text, separator) ?? text;
+
+        public static string AfterLastOrAll(this string text, string separator, StringComparison comparisonType = StringComparison.Ordinal)
+            => AfterLast(text, separator, comparisonType) ?? text;
+
+        public static string AfterLastOrAll(this string text, char separator)
+            => AfterLast(text, separator) ?? text;
+
         private static string AfterAux(string text, int index, int separatorLength) => index switch {
             -1 => null,
             _ => text.Substring(index + separatorLength)
         };
 
+        #endregion [ Before[Last][OrAll] / After[Last][OrAll] ]
 
+
+        #region [ ToEncodingBytes / FromEncodingBytes ]
 
         public static byte[] ToEncodingBytes(this string value, Encoding encoding)
         {
@@ -69,19 +112,30 @@ namespace DotNetX
         public static byte[] ToUtf8(this string value) => value.ToEncodingBytes(Encoding.UTF8);
         public static string FromUtf8(this byte[] bytes) => bytes.FromEncodingBytes(Encoding.UTF8);
 
+        #endregion [ ToEncodingBytes / FromEncodingBytes ]
+
+
+        #region [ ToBase64 / FromBase64 ]
+
         public static string ToBase64(this byte[] bytes) => Convert.ToBase64String(bytes);
         public static byte[] FromBase64(this string value) => Convert.FromBase64String(value);
 
-        public static string ToHexString(this byte[] bytes)
+        #endregion [ ToBase64 / FromBase64 ]
+
+
+        #region [ ToHexString / FromHexString ]
+
+        public static string ToHexString(this byte[] bytes, bool lowercase = false)
         {
             var sb = new StringBuilder(bytes.Length * 2);
+            var format = lowercase ? "x2" : "X2";
             for (int i = 0; i < bytes.Length; i++)
             {
-                sb.Append(bytes[i].ToString("X2"));
+                sb.Append(bytes[i].ToString(format));
             }
             return sb.ToString();
         }
-        public static byte[] FromHexStrinng(this string value)
+        public static byte[] FromHexString(this string value)
         {
             if (value.Length % 2 != 0)
             {
@@ -95,7 +149,11 @@ namespace DotNetX
             return bytes;
         }
 
-        
+        #endregion [ ToHexString / FromHexStrinng ]
+
+
+        #region [ Shorten ]
+
         public static string Shorten(this string value, int maxLength, string elipsis = "")
         {
             if (value.Length <= maxLength)
@@ -110,8 +168,12 @@ namespace DotNetX
 
             return value.Substring(0, maxLength - elipsis.Length) + elipsis;
         }
-    
-    
+
+        #endregion [ Shorten ]
+
+
+        #region [ Compute[Shorten][Hash|MD5|SHAn] ]
+
         public static string ComputeHash(this string value, Func<byte[], byte[]> byteHasher) =>
             byteHasher(value.ToUtf8()).ToHexString();
 
@@ -138,7 +200,14 @@ namespace DotNetX
         public static string ComputeShortenSHA512(this string value, int maxLength = 10) =>
             value.ComputeShortenHash(maxLength, BytesExtensions.ComputeSHA512);
 
-        public static string GetRandomHexString(this int length) =>
-            (length / 2 + 1).GetRandomBytes().ToHexString().Shorten(length, "");
+        #endregion [ Compute[Shorten][Hash|MD5|SHAn] ]
+
+
+        #region [ GetRandomHexString ]
+
+        public static string GetRandomHexString(this int length, bool lowercase = false) =>
+            (length / 2 + 1).GetRandomBytes().ToHexString(lowercase: lowercase).Shorten(length, "");
+
+        #endregion [ GetRandomHexString ]
     }
 }
