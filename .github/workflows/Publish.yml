@@ -5,7 +5,7 @@ on:
     tags: [ v* ]
 
 jobs:
-  build:
+  publish:
 
     runs-on: ubuntu-latest
 
@@ -35,7 +35,8 @@ jobs:
         reporttypes: "HtmlInline;Cobertura"
         tag: '${{ github.run_number }}_${{ github.run_id }}'
 
-    - name: Coverage
+    - name: Publish Coverage Report
+      if: ${{ github.event_name == 'pull_request' }}
       uses: 5monkeys/cobertura-action@master
       with:
         path: Preamble.Tests/coverage.cobertura.xml
@@ -43,7 +44,7 @@ jobs:
         minimum_coverage: 75
 
     - name: Pack
-      run: dotnet pack --configuration Release --output ./Preamble/bin/nupkg Preamble
+      run: dotnet pack --configuration Release --output ./Releases/nupkg ./Src/DotNetX
 
     - name: Publish
-      run: dotnet nuget push ./Preamble/bin/nupkg/*.nupkg --source https://api.nuget.org/v3/index.json --api-key ${{ secrets.NUGET_TOKEN }}
+      run: dotnet nuget push ./Releases/nupkg/*.nupkg --source https://api.nuget.org/v3/index.json --api-key ${{ secrets.NUGET_TOKEN }}

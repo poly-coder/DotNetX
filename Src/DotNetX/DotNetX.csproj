@@ -2,6 +2,15 @@
 
   <PropertyGroup>
     <TargetFrameworks>netstandard2.1</TargetFrameworks>
+    <PackageId>DotNetX</PackageId>
+    <Version>0.0.1</Version>
+    <Authors>Iskander Sierra</Authors>
+    <Company>PolyCoder</Company>
+    <Product>PolyCoder CSharp Framework</Product>
+    <Description>Basic and common functionality to be used in DotNet Standard/Core projects</Description>
+    <PackageProjectUrl>https://github.com/poly-coder/DotNetX</PackageProjectUrl>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <AssemblyName>DotNetX</AssemblyName>
   </PropertyGroup>
 
 </Project>
