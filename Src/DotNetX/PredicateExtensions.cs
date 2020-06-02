@@ -6,10 +6,15 @@ namespace DotNetX
 {
     public static class PredicateExtensions
     {
+        public static Func<T, bool> IsReferenceEqualsPredicate<T>(this T value)
+        {
+            return v => ReferenceEquals(v, value);
+        }
+
         public static Func<T, bool> IsSamePredicate<T>(this T value, IEqualityComparer<T> comparer = null)
         {
             comparer = comparer ?? EqualityComparer<T>.Default;
-            return str => comparer.Equals(str, value);
+            return v => comparer.Equals(v, value);
         }
 
         public static Func<string, bool> IsSameOrdinalPredicate(this string value)
@@ -76,15 +81,5 @@ namespace DotNetX
         {
             return value => !predicate(value);
         }
-
-        public static Func<Type, bool> IsAssignableFromPredicate(this Type assignableBaseType)
-        {
-            return type => assignableBaseType.IsAssignableFrom(type);
-        }
-
-        //public static Func<Type, bool> IsAssignableFromPredicate<TGenericContainer>(this Type assignableBaseType)
-        //{
-        //    return type => assignableBaseType.IsAssignableFrom<TGenericContainer>(type);
-        //}
     }
 }

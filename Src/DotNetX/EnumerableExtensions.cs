@@ -15,6 +15,15 @@ namespace DotNetX
             yield return value;
         }
 
+        public static IEnumerable<T> SingletonIf<T>(this T value, Func<T, bool> predicate)
+        {
+            if (predicate(value))
+                yield return value;
+        }
+
+        public static IEnumerable<T> SingletonNonNull<T>(this T value) where T : class
+            => value.SingletonIf(Predicate.IsNonNull);
+
         #endregion [ Singleton ]
 
 

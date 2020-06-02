@@ -1,6 +1,7 @@
 using System;
 using System.Globalization;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace DotNetX
 {
@@ -14,7 +15,8 @@ namespace DotNetX
 
         #endregion [ IsNullOrEmpty / IsNullOrWhiteSpace ]
 
-        #region [ RemoveSuffix / RemovePrefix ]
+
+        #region [ RemoveSuffix / RemovePrefix / RemovePattern ]
 
         public static string RemoveSuffix(this string value, string suffix)
         {
@@ -28,6 +30,23 @@ namespace DotNetX
             if (value == null) return null;
             if (value.Length <= prefix.Length || !value.StartsWith(prefix)) return value;
             return value.Substring(prefix.Length);
+        }
+
+        public static string RemovePattern(this string value, Regex regex, int startAt = 0, int length = -1, string groupName = null)
+        {
+            var match = regex.Match(value, startAt, length < 0 ? value.Length : length);
+            if (match.Success)
+            {
+                var capture = groupName == null ? match : match.Groups[groupName];
+                return value.Remove(capture.Index, capture.Length);
+            }
+            return value;
+        }
+
+        public static string RemovePattern(this string value, string pattern, int startAt = 0, int length = -1, string groupName = null, RegexOptions options = RegexOptions.None)
+        {
+            var regex = new Regex(pattern, options);
+            return value.RemovePattern(regex, startAt, length, groupName);
         }
 
         #endregion [ RemoveSuffix / RemovePrefix ]
@@ -207,6 +226,24 @@ namespace DotNetX
 
         public static string GetRandomHexString(this int length, bool lowercase = false) =>
             (length / 2 + 1).GetRandomBytes().ToHexString(lowercase: lowercase).Shorten(length, "");
+
+        #endregion [ GetRandomHexString ]
+
+
+        #region [ ChangeCase ]
+
+        // TODO: This is a simplified version. We have to create a solution to allow for all case change operations
+        public static string ToCamelCase(this string text)
+        {
+            if (text.Length >= 1)
+            {
+                if (char.IsUpper(text, 0))
+                {
+                    text = char.ToLowerInvariant(text[0]) + text.Substring(1);
+                }
+            }
+            return text;
+        }
 
         #endregion [ GetRandomHexString ]
     }

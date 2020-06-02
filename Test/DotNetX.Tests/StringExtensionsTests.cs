@@ -37,6 +37,7 @@ namespace DotNetX.Tests
 
         #endregion [ Shorten ]
 
+
         #region [ IsNullOrEmpty / IsNullOrWhiteSpace ]
 
         [Property]
@@ -70,7 +71,8 @@ namespace DotNetX.Tests
 
         #endregion [ IsNullOrEmpty / IsNullOrWhiteSpace ]
 
-        #region [ RemoveSuffix / RemovePrefix ]
+
+        #region [ RemoveSuffix / RemovePrefix / RemovePattern ]
 
         [Property]
         public bool RemoveSuffixWhenNonEmptyStart(NonEmptyString start, NonNull<string> suffix)
@@ -119,8 +121,30 @@ namespace DotNetX.Tests
             }
             return true;
         }
+    
+        [TestCase("SampleQueryRunner", "QueryRunner$", "Sample")]
+        [TestCase("SampleQueryRunner", "Query$", "SampleQueryRunner")]
+        [TestCase("SampleQueryRunner", "Query", "SampleRunner")]
+        [TestCase("SampleCommandRunner", "Query", "SampleCommandRunner")]
+        [TestCase("SampleRunner", "QueryRunner$", "SampleRunner")]
+        [TestCase("SampleQueryRunner", "(Query)?(Runner)?$", "Sample")]
+        [TestCase("SampleRunner", "(Query)?(Runner)?$", "Sample")]
+        [TestCase("SampleQuery", "(Query)?(Runner)?$", "Sample")]
+        public void RemovePatternSimpleTestCases(string text, string pattern, string expected)
+        {
+            text.RemovePattern(pattern).Should().Be(expected);
+        }
+
+        [TestCase("SampleQueryRunner", "(?<query>Query)?(Runner)$", "query", "SampleRunner")]
+        [TestCase("SampleRunner", "(?<query>Query)?(Runner)$", "query", "SampleRunner")]
+        [TestCase("SampleQueryRunner", "(?<q>Query)?(Runner)$", "query", "SampleQueryRunner")]
+        public void RemovePatternTestCasesWithGroupName(string text, string pattern, string groupName, string expected)
+        {
+            text.RemovePattern(pattern, groupName: groupName).Should().Be(expected);
+        }
 
         #endregion [ RemoveSuffix / RemovePrefix ]
+
 
         #region [ Before / After ]
 
@@ -171,7 +195,16 @@ namespace DotNetX.Tests
         {
             "This does not have separator".BeforeLastOrAll(" ").Should().Be("This does not have");
         }
-        
+
         #endregion [ Before / After ]
+
+
+        #region [ ChangeCase ]
+
+        [TestCase("HelloWorld", ExpectedResult = "helloWorld")]
+        [TestCase("helloWorld", ExpectedResult = "helloWorld")]
+        public string ToCamelCaseTests(string text) => text.ToCamelCase();
+
+        #endregion [ ChangeCase ]
     }
 }

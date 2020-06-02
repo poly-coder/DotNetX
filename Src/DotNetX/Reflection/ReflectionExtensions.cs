@@ -8,6 +8,8 @@ namespace DotNetX.Reflection
 {
     public static class ReflectionExtensions
     {
+        #region [ FormatName / FormatSignature ]
+
         private static readonly Dictionary<Type, string> StandardTypeShorFormats = new Dictionary<Type, string>
         { 
             [typeof(string)] = "string",
@@ -52,7 +54,8 @@ namespace DotNetX.Reflection
 
             if (typeof(Delegate).IsAssignableFrom(type))
             {
-                return "Its a delegate: " + type.Name;
+                var method = type.GetMethod("Invoke");
+                return method.FormatSignature(type.Name, fullName);
             }
 
             var typeName = fullName ? type.FullName : type.Name;
@@ -76,6 +79,31 @@ namespace DotNetX.Reflection
             return typeName;
         }
 
+        public static string FormatSignature(this MethodInfo method, string methodName = null, bool fullName = false)
+        {
+            methodName ??= fullName ? $"{method.DeclaringType.FormatName(true)}.{method.Name}" : method.Name;
+            var sb = new StringBuilder();
+            sb.Append(method.ReturnType.FormatName(fullName)).Append(" ").Append(methodName).Append("(");
+            var parameters = method.GetParameters();
+            for (int i = 0; i < parameters.Length; i++)
+            {
+                var parameter = parameters[i];
+                if (i > 0)
+                {
+                    sb.Append(", ");
+                }
+
+                sb.Append(parameter.ParameterType.FormatName(fullName)).Append(" ").Append(parameter.Name);
+            }
+            sb.Append(")");
+            return sb.ToString();
+        }
+
+        #endregion [ FormatName / FormatSignature ]
+
+
+        #region [ SelectMethods ]
+
         public static IEnumerable<MethodInfo> SelectMethods(this Type type,
             BindingFlags bindingFlags = BindingFlags.Public | BindingFlags.Instance,
             Func<string, bool> isValidMethodName = null,
@@ -88,6 +116,11 @@ namespace DotNetX.Reflection
             query = isValidInputType == null ? query : query.Where(method => isValidInputType(method.GetParameters()));
             return query;
         }
+
+        #endregion [ SelectMethods ]
+
+
+        #region [ GetAttributes / GetConventionValue ]
 
         public static IEnumerable<Attribute> GetAttributes(this ICustomAttributeProvider provider, Type attributeType, bool inherit)
         {
@@ -123,18 +156,139 @@ namespace DotNetX.Reflection
             return attr == null ? ofConvention(provider) : ofAttribute(attr);
         }
 
-        ///// <summary>
-        ///// 
-        ///// </summary>
-        ///// <typeparam name="TGenericContainer"></typeparam>
-        ///// <param name="type"></param>
-        ///// <returns></returns>
-        ///// <example>
-        ///// typeof(List<)
-        ///// </example>
-        //public static Type IsAssignableFrom<TGenericContainer>(this Type type)
-        //{
-        //    return null;
-        //}
+        #endregion [ GetAttributes / GetConventionValue ]
+
+
+        #region [ Traversals ]
+
+        public static IEnumerable<Type> GetClassHierarchy(this Type type)
+        {
+            return type.Unfold(t => t.BaseType);
+        }
+
+        public static IEnumerable<Type> GetTypeHierarchy(this Type type)
+        {
+            return type.DepthFirstSearch(t => t.BaseType.SingletonNonNull().Concat(t.GetInterfaces()));
+        }
+
+        #endregion [ Traversals ]
+
+
+        #region [ Predicates ]
+
+        public static Func<Type, bool> IsAssignableFromPredicate(this Type baseType)
+        {
+            return type => baseType.IsAssignableFrom(type);
+        }
+
+        public static Func<Type, bool> HaveClassInHierarchyPredicate(this Type baseClass)
+        {
+            return type => type.GetClassHierarchy().Any(t => t == baseClass);
+        }
+
+        public static Func<Type, bool> HaveTypeInHierarchyPredicate(this Type baseClass)
+        {
+            return type => type.GetTypeHierarchy().Any(t => t == baseClass);
+        }
+
+        public static Func<Type, bool> ConformsToPredicate(this Type shapeType)
+        {
+            return type => type.ConformsTo(shapeType);
+        }
+
+        public static Func<Type, bool> ConformsToGenericPredicate(
+            this Type typeDefinition,
+            params Type[] arguments)
+        {
+            return type => type.ConformsToGeneric(typeDefinition, arguments);
+        }
+
+        public static Func<Type, bool> ConformsToGenericPredicate(
+            this Type typeDefinition,
+            params Func<Type, bool>[] argumentPredicates)
+        {
+            return type => type.ConformsToGeneric(typeDefinition.IsAssignableFromPredicate(), argumentPredicates);
+        }
+
+        public static Func<Type, bool> ConformsToGenericPredicate(
+            this Func<Type, bool> typeDefinitionPredicate,
+            params Func<Type, bool>[] argumentPredicates)
+        {
+            return type => type.ConformsToGeneric(typeDefinitionPredicate, argumentPredicates);
+        }
+
+        #endregion [ Predicates ]
+
+
+        #region [ ConformsTo ]
+
+        public static bool ConformsTo(this Type sourceType, Type shapeType)
+        {
+            if (shapeType.IsAssignableFrom(sourceType))
+            {
+                return true;
+            }
+
+            if (shapeType.IsGenericType)
+            {
+                return sourceType.ConformsToGeneric(
+                    shapeType.GetGenericTypeDefinition(),
+                    shapeType.GetGenericArguments());
+            }
+
+            return false;
+        }
+
+        public static bool ConformsToGeneric(
+            this Type sourceType, 
+            Type typeDefinition, 
+            params Type[] arguments)
+        {
+            if (!sourceType.IsGenericType) return false;
+
+            Type sourceTypeDefinition = sourceType.GetGenericTypeDefinition();
+            //if (typeDefinition == sourceTypeDefinition || typeDefinition.IsAssignableFrom(sourceTypeDefinition)) return false;
+            if (sourceTypeDefinition.GetTypeHierarchy().All(t => t != typeDefinition)) return false;
+
+            var sourceArgs = sourceType.GetGenericArguments();
+
+            if (sourceArgs.Length != arguments.Length) return false;
+
+            for (int i = 0; i < sourceArgs.Length; i++)
+            {
+                if (!sourceArgs[i].ConformsTo(arguments[i]))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        public static bool ConformsToGeneric(
+            this Type sourceType, 
+            Func<Type, bool> typeDefinitionPredicate, 
+            params Func<Type, bool>[] argumentPredicates)
+        {
+            if (!sourceType.IsGenericType) return false;
+
+            if (!typeDefinitionPredicate(sourceType.GetGenericTypeDefinition())) return false;
+
+            var sourceArgs = sourceType.GetGenericArguments();
+
+            if (sourceArgs.Length != argumentPredicates.Length) return false;
+
+            for (int i = 0; i < sourceArgs.Length; i++)
+            {
+                if (!argumentPredicates[i](sourceArgs[i]))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        #endregion [ ConformsTo ]
     }
 }

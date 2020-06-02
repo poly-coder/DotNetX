@@ -10,12 +10,17 @@ using System.Reflection;
 using System.Text.RegularExpressions;
 using System.Threading;
 using PropertyAttribute = FsCheck.NUnit.PropertyAttribute;
+using System.Collections;
+using System.Threading.Tasks;
+using System.ComponentModel.Design;
 
 namespace DotNetX.Tests
 {
     [TestFixture]
     public class ReflectionExtensionsTests
     {
+        #region [ FormatName / FormatSignature ]
+
         [Test]
         public void FormatNameOfRegex()
         {
@@ -196,10 +201,182 @@ namespace DotNetX.Tests
         //    typeof(string[,][,,]).FormatName().Should().Be("string[,][,,]");
         //}
 
-        // [Test]
-        // public void FormatNameOfThreadStart()
-        // {
-        //     typeof(ThreadStart).FormatName().Should().Be("void ThreadStart()");
-        // }
+        [Test]
+        public void FormatNameOfThreadStart()
+        {
+            typeof(ThreadStart).FormatName().Should().Be("void ThreadStart()");
+        }
+
+        [Test]
+        public void FullFormatNameOfThreadStart()
+        {
+            typeof(ThreadStart).FormatName(true).Should().Be("System.Void ThreadStart()");
+        }
+
+        #endregion [ FormatName / FormatSignature ]
+
+
+        #region [ GetClassHierarchy / GetTypeHierarchy ]
+
+        [Test]
+        public static void GetClassHierarchyOfClass()
+        {
+            typeof(DesignerVerbCollection).GetClassHierarchy().Should().Equal(
+                typeof(DesignerVerbCollection),
+                typeof(CollectionBase),
+                typeof(object));
+        }
+
+        [Test]
+        public static void GetClassHierarchyOfGenericClass()
+        {
+            typeof(List<string>).GetClassHierarchy().Should().Equal(
+                typeof(List<string>),
+                typeof(object));
+        }
+
+        [Test]
+        public static void GetClassHierarchyOfGenericTypeDefinition()
+        {
+            typeof(List<>).GetClassHierarchy().Should().Equal(
+                typeof(List<>),
+                typeof(object));
+        }
+
+        [Test]
+        public static void GetTypeHierarchyOfClass()
+        {
+            typeof(DesignerVerbCollection).GetTypeHierarchy().Should().Equal(
+                typeof(DesignerVerbCollection),
+                typeof(CollectionBase),
+                typeof(object),
+                typeof(IList),
+                typeof(ICollection),
+                typeof(IEnumerable)
+            );
+        }
+
+        [Test]
+        public static void GetTypeHierarchyOfGenericClass()
+        {
+            typeof(List<string>).GetTypeHierarchy().Should().BeEquivalentTo(
+                typeof(List<string>),
+                typeof(object),
+                typeof(IList<string>),
+                typeof(ICollection<string>),
+                typeof(IEnumerable<string>),
+                typeof(IReadOnlyList<string>),
+                typeof(IReadOnlyCollection<string>),
+                typeof(IList),
+                typeof(ICollection),
+                typeof(IEnumerable)
+            );
+        }
+
+        [Test]
+        public static void BasicReflectionSupposition()
+        {
+            typeof(List<string>).GetGenericTypeDefinition().Should().Be(typeof(List<>));
+            typeof(IList<string>).GetGenericTypeDefinition().Should().Be(typeof(IList<>));
+            typeof(List<string>).GetInterfaces().Select(t => t.GetGenericTypeDefinition()).Should().Contain(typeof(IList<>));
+        }
+
+        //[Test]
+        //public static void GetTypeHierarchyOfGenericTypeDefinition()
+        //{
+        //    var actual = typeof(List<>).GetTypeHierarchy().ToArray();
+        //    var expected = new Type[] {
+        //                typeof(List<>),
+        //                typeof(object),
+        //                typeof(IList<string>).GetGenericTypeDefinition(),
+        //                typeof(ICollection<>),
+        //                typeof(IEnumerable<>),
+        //                typeof(IEnumerable),
+        //                typeof(IList),
+        //                typeof(ICollection),
+        //                typeof(IReadOnlyList<>),
+        //                typeof(IReadOnlyCollection<>)
+        //            };
+
+        //    actual.Should().Equal(expected);
+
+        //    //typeof(List<>).GetTypeHierarchy().Should().BeEquivalentTo(
+        //    //    typeof(List<>),
+        //    //    typeof(object),
+        //    //    typeof(IList<>),
+        //    //    typeof(ICollection<>),
+        //    //    typeof(IEnumerable<>),
+        //    //    typeof(IEnumerable),
+        //    //    typeof(IList),
+        //    //    typeof(ICollection),
+        //    //    typeof(IReadOnlyList<>),
+        //    //    typeof(IReadOnlyCollection<>)
+        //    //);
+        //}
+
+        #endregion [ GetClassHierarchy / GetTypeHierarchy ]
+
+
+        #region [ ConformsTo ]
+
+        [Test]
+        public static void ConformsToWithNonGenericInterfaces()
+        {
+            typeof(IList).ConformsTo(typeof(IEnumerable)).Should().BeTrue();
+            typeof(IEnumerable).ConformsTo(typeof(IList)).Should().BeFalse();
+        }
+
+        [Test]
+        public static void ConformsToWithNonGenericClasses()
+        {
+            typeof(string).ConformsTo(typeof(object)).Should().BeTrue();
+            typeof(object).ConformsTo(typeof(string)).Should().BeFalse();
+        }
+
+        [Test]
+        public static void ConformsToWithOneGenericArg()
+        {
+            typeof(IList<string>).ConformsTo(typeof(IEnumerable<object>)).Should().BeTrue();
+            typeof(IList<object>).ConformsTo(typeof(IEnumerable<string>)).Should().BeFalse();
+            typeof(IEnumerable<object>).ConformsTo(typeof(IList<string>)).Should().BeFalse();
+
+            typeof(Task<string>).ConformsTo(typeof(Task<object>)).Should().BeTrue();
+            typeof(Task<object>).ConformsTo(typeof(Task<string>)).Should().BeFalse();
+        }
+
+        //[Test]
+        //public static void ConformsToWithTwoGenericArgs()
+        //{
+        //    typeof(Dictionary<IList, ICollection>).ConformsTo(typeof(IDictionary<IEnumerable, IEnumerable>)).Should().BeTrue();
+        //    //typeof(IDictionary<IEnumerable, IEnumerable>).ConformsTo(typeof(Dictionary<IList, ICollection>)).Should().BeFalse();
+        //}
+
+
+        //[Test]
+        //public static void ConformsToWithNonGenericInterfacesPredicate()
+        //{
+        //    typeof(IEnumerable).ConformsToPredicate()(typeof(IList)).Should().BeTrue();
+        //}
+
+        //[Test]
+        //public static void ConformsToWithNonGenericClassesPredicate()
+        //{
+        //    typeof(object).ConformsToPredicate()(typeof(string)).Should().BeTrue();
+        //}
+
+        //[Test]
+        //public static void ConformsToWithOneGenericArgPredicate()
+        //{
+        //    typeof(IEnumerable<object>).ConformsToPredicate()(typeof(IList<string>)).Should().BeTrue();
+        //    typeof(Task<string>).ConformsTo(typeof(Task<object>)).Should().BeTrue();
+        //}
+
+        //[Test]
+        //public static void ConformsToWithTwoGenericArgsPredicate()
+        //{
+        //    typeof(IDictionary<IEnumerable, IEnumerable>).ConformsToPredicate()(typeof(Dictionary<IList, ICollection>)).Should().BeTrue();
+        //}
+
+        #endregion [ ConformsTo ]
     }
 }
