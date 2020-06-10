@@ -506,6 +506,26 @@ namespace DotNetX
         }
 
         #endregion [ Graph Traversal ]
+
+
+        #region [ ToDictionary ]
+
+        public static Dictionary<TKey, TValue> ToDictionary<TKey, TValue>(this IEnumerable<KeyValuePair<TKey, TValue>> source, IEqualityComparer<TKey> comparer = null)
+        {
+            return new Dictionary<TKey, TValue>(source, comparer ?? EqualityComparer<TKey>.Default);
+        }
+
+        public static Dictionary<TKey, TValue> ToDictionary<TKey, TValue>(this IEnumerable<Tuple<TKey, TValue>> source, IEqualityComparer<TKey> comparer = null)
+        {
+            return source.ToDictionary(t => t.Item1, t => t.Item2, comparer ?? EqualityComparer<TKey>.Default);
+        }
+
+        public static Dictionary<TKey, TValue> ToDictionary<TKey, TValue>(this IEnumerable<ValueTuple<TKey, TValue>> source, IEqualityComparer<TKey> comparer = null)
+        {
+            return source.ToDictionary(t => t.Item1, t => t.Item2, comparer ?? EqualityComparer<TKey>.Default);
+        }
+
+        #endregion [ ToDictionary ]
     }
 
     public class StructuralEnumerableEqualityComparer<T> : IEqualityComparer<IEnumerable<T>>, IEqualityComparer

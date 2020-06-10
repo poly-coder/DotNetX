@@ -151,9 +151,39 @@ namespace DotNetX.Reflection
             Func<TAttribute, TValue> ofAttribute)
             where TProvider : ICustomAttributeProvider
             where TAttribute : Attribute
+            where TValue : class
         {
             var attr = provider.GetAttribute<TAttribute>(inherit);
-            return attr == null ? ofConvention(provider) : ofAttribute(attr);
+            if (attr != null)
+            {
+                var result = ofAttribute(attr);
+                if (result != null)
+                {
+                    return result;
+                }
+            }
+            return ofConvention(provider);
+        }
+
+        public static TValue GetConventionValue<TProvider, TAttribute, TValue>(
+            this TProvider provider, 
+            bool inherit, 
+            Func<TProvider, TValue> ofConvention,
+            Func<TAttribute, TValue?> ofAttribute)
+            where TProvider : ICustomAttributeProvider
+            where TAttribute : Attribute
+            where TValue : struct
+        {
+            var attr = provider.GetAttribute<TAttribute>(inherit);
+            if (attr != null)
+            {
+                var result = ofAttribute(attr);
+                if (result.HasValue)
+                {
+                    return result.Value;
+                }
+            }
+            return ofConvention(provider);
         }
 
         #endregion [ GetAttributes / GetConventionValue ]
