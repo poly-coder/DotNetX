@@ -1,18 +1,7 @@
 ﻿using FluentAssertions;
-using FsCheck;
-using FsCheck.NUnit;
-using DotNetX;
 using NUnit.Framework;
 using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
-using System.Text.RegularExpressions;
-using System.Threading;
-using PropertyAttribute = FsCheck.NUnit.PropertyAttribute;
-using System.Collections;
-using System.Threading.Tasks;
-using System.ComponentModel.Design;
 
 namespace DotNetX.Tests
 {
@@ -26,15 +15,27 @@ namespace DotNetX.Tests
         }
 
         [Test]
-        public static void OptionalNoneShouldNotHaveValue()
+        public static void OptionalNoneShouldNotBeSome()
         {
-            Optional.None<string>().HasValue().Should().BeFalse();
+            Optional.None<string>().IsSome.Should().BeFalse();
         }
 
         [Test]
-        public static void OptionalSomeShouldHaveValue()
+        public static void OptionalNoneShouldBeNone()
         {
-            Optional.Some("").HasValue().Should().BeTrue();
+            Optional.None<string>().IsNone.Should().BeTrue();
+        }
+
+        [Test]
+        public static void OptionalSomeShouldBeSome()
+        {
+            Optional.Some("").IsSome.Should().BeTrue();
+        }
+
+        [Test]
+        public static void OptionalSomeShouldNotBeNone()
+        {
+            Optional.Some("").IsNone.Should().BeFalse();
         }
 
         [Test]
@@ -116,18 +117,6 @@ namespace DotNetX.Tests
         {
             Optional.Some(42).TryGetValue(out var value).Should().BeTrue();
             value.Should().Be(42);
-        }
-
-        [Test]
-        public static void OptionalNoneHasValueShouldBeFalse()
-        {
-            Optional.None<int>().HasValue().Should().BeFalse();
-        }
-
-        [Test]
-        public static void OptionalSomeHasValueShouldBeTrue()
-        {
-            Optional.Some(42).HasValue().Should().BeTrue();
         }
 
         [Test]

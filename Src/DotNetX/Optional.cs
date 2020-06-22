@@ -55,19 +55,16 @@ namespace DotNetX
         {
             return !(left == right);
         }
-    }
 
-    public static class Optional
-    {
-        public static Optional<T> None<T>() => Optional<T>.None;
+        public bool IsSome => isSome;
+        
+        public bool IsNone => !isSome;
 
-        public static Optional<T> Some<T>(T value) => Optional<T>.Some(value);
-
-        public static TResult MatchWith<T, TResult>(this Optional<T> optional, Func<T, TResult> onSome, Func<TResult> onNone)
+        public TResult MatchWith<TResult>(Func<T, TResult> onSome, Func<TResult> onNone)
         {
-            if (optional.isSome)
+            if (isSome)
             {
-                return onSome(optional.value);
+                return onSome(value);
             }
             else
             {
@@ -75,11 +72,11 @@ namespace DotNetX
             }
         }
 
-        public static void MatchWith<T>(this Optional<T> optional, Action<T> onSome, Action onNone)
+        public void MatchWith(Action<T> onSome, Action onNone)
         {
-            if (optional.isSome)
+            if (isSome)
             {
-                onSome(optional.value);
+                onSome(value);
             }
             else
             {
@@ -87,21 +84,11 @@ namespace DotNetX
             }
         }
 
-        public static Optional<B> Bind<A, B>(this Optional<A> optional, Func<A, Optional<B>> f)
+        public bool TryGetValue(out T value)
         {
-            return optional.MatchWith(f, None<B>);
-        }
-
-        public static Optional<B> Map<A, B>(this Optional<A> optional, Func<A, B> f)
-        {
-            return optional.Bind(a => Some(f(a)));
-        }
-
-        public static bool TryGetValue<T>(this Optional<T> optional, out T value)
-        {
-            if (optional.isSome)
+            if (isSome)
             {
-                value = optional.value;
+                value = this.value;
                 return true;
             }
             else
@@ -111,28 +98,41 @@ namespace DotNetX
             }
         }
 
-        public static bool HasValue<T>(this Optional<T> optional)
+        public T GetValue()
         {
-            return optional.TryGetValue(out var _);
-        }
-
-        public static T GetValue<T>(this Optional<T> optional)
-        {
-            if (optional.TryGetValue(out var value))
+            if (TryGetValue(out var value))
             {
                 return value;
             }
             throw new InvalidOperationException();
         }
 
-        public static T GetValue<T>(this Optional<T> optional, Func<T> defaultValue)
+        public T GetValue(Func<T> defaultValueFn)
         {
-            return optional.MatchWith(v => v, defaultValue);
+            return MatchWith(v => v, defaultValueFn);
         }
 
-        public static T GetValue<T>(this Optional<T> optional, T defaultValue)
+        public T GetValue(T defaultValue)
         {
-            return optional.GetValue(() => defaultValue);
+            return GetValue(() => defaultValue);
+        }
+
+    }
+
+    public static class Optional
+    {
+        public static Optional<T> None<T>() => Optional<T>.None;
+
+        public static Optional<T> Some<T>(T value) => Optional<T>.Some(value);
+
+        public static Optional<B> Bind<A, B>(this Optional<A> optional, Func<A, Optional<B>> f)
+        {
+            return optional.MatchWith(f, None<B>);
+        }
+
+        public static Optional<B> Map<A, B>(this Optional<A> optional, Func<A, B> f)
+        {
+            return optional.Bind(a => Some(f(a)));
         }
 
         public static IEnumerable<T> AsEnumerable<T>(this Optional<T> optional)
