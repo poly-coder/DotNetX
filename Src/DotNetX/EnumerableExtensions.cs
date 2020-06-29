@@ -17,6 +17,11 @@ namespace DotNetX
 
         public static IEnumerable<T> SingletonIf<T>(this T value, Func<T, bool> predicate)
         {
+            if (predicate is null)
+            {
+                throw new ArgumentNullException(nameof(predicate));
+            }
+
             if (predicate(value))
                 yield return value;
         }
@@ -41,6 +46,16 @@ namespace DotNetX
 
         public static void ForEach<T>(this IEnumerable<T> source, Action<T> action)
         {
+            if (source is null)
+            {
+                throw new ArgumentNullException(nameof(source));
+            }
+
+            if (action is null)
+            {
+                throw new ArgumentNullException(nameof(action));
+            }
+
             foreach (var item in source)
             {
                 action(item);
@@ -79,14 +94,24 @@ namespace DotNetX
             return -1;
         }
 
-        public static int IndexOf<T>(this IReadOnlyList<T> source, T item, IEqualityComparer<T> comparer = null)
+        public static int IndexOf<T>(this IReadOnlyList<T> source, T item, IEqualityComparer<T>? comparer = null)
         {
-            comparer = comparer ?? EqualityComparer<T>.Default;
+            comparer ??= EqualityComparer<T>.Default;
             return source.IndexOf(e => comparer.Equals(e, item));
         }
 
         public static int LastIndexOf<T>(this IReadOnlyList<T> source, Func<T, bool> predicate)
         {
+            if (source is null)
+            {
+                throw new ArgumentNullException(nameof(source));
+            }
+
+            if (predicate is null)
+            {
+                throw new ArgumentNullException(nameof(predicate));
+            }
+
             for (int i = source.Count - 1; i >= 0; i--)
             {
                 if (predicate(source[i]))
@@ -97,9 +122,9 @@ namespace DotNetX
             return -1;
         }
 
-        public static int LastIndexOf<T>(this IReadOnlyList<T> source, T item, IEqualityComparer<T> comparer = null)
+        public static int LastIndexOf<T>(this IReadOnlyList<T> source, T item, IEqualityComparer<T>? comparer = null)
         {
-            comparer = comparer ?? EqualityComparer<T>.Default;
+            comparer ??= EqualityComparer<T>.Default;
             return source.LastIndexOf(e => comparer.Equals(e, item));
         }
 
@@ -108,7 +133,7 @@ namespace DotNetX
 
         #region [ IsEqualTo / GetCollectionHashCode ]
 
-        public static bool IsEqualTo<T>(this IEnumerable<T> source1, IEnumerable<T> source2, IEqualityComparer<T> comparer = null)
+        public static bool IsEqualTo<T>(this IEnumerable<T>? source1, IEnumerable<T>? source2, IEqualityComparer<T>? comparer = null)
         {
             if ((source1 == null) != (source2 == null)) return false;
             if (source1 == null) return true;
@@ -118,11 +143,11 @@ namespace DotNetX
                 return collection1.IsEqualTo(collection2, comparer);
             }
 
-            comparer = comparer ?? EqualityComparer<T>.Default;
-            return AreEqualEnumerables(source1, source2, comparer);
+            comparer ??= EqualityComparer<T>.Default;
+            return AreEqualEnumerables(source1, source2!, comparer);
         }
 
-        public static bool IsEqualTo<T>(this IReadOnlyCollection<T> source1, IReadOnlyCollection<T> source2, IEqualityComparer<T> comparer = null)
+        public static bool IsEqualTo<T>(this IReadOnlyCollection<T>? source1, IReadOnlyCollection<T>? source2, IEqualityComparer<T>? comparer = null)
         {
             if ((source1 == null) != (source2 == null)) return false;
             if (source1 == null) return true;
@@ -132,13 +157,13 @@ namespace DotNetX
                 return list1.IsEqualTo(list2, comparer);
             }
 
-            if (source1.Count != source2.Count) return false;
+            if (source1.Count != source2!.Count) return false;
 
             comparer = comparer ?? EqualityComparer<T>.Default;
             return AreEqualEnumerables(source1, source2, comparer);
         }
 
-        public static bool IsEqualTo<T>(this IReadOnlyList<T> source1, IReadOnlyList<T> source2, IEqualityComparer<T> comparer = null)
+        public static bool IsEqualTo<T>(this IReadOnlyList<T>? source1, IReadOnlyList<T>? source2, IEqualityComparer<T>? comparer = null)
         {
             if ((source1 == null) != (source2 == null)) return false;
             if (source1 == null) return true;
@@ -148,7 +173,7 @@ namespace DotNetX
                 return array1.IsEqualTo(array2, comparer);
             }
 
-            if (source1.Count != source2.Count) return false;
+            if (source1.Count != source2!.Count) return false;
 
             var count = source1.Count;
             comparer = comparer ?? EqualityComparer<T>.Default;
@@ -159,12 +184,14 @@ namespace DotNetX
             return true;
         }
 
-        public static bool IsEqualTo<T>(this T[] source1, T[] source2, IEqualityComparer<T> comparer = null)
+        public static bool IsEqualTo<T>(this T[]? source1, T[]? source2, IEqualityComparer<T>? comparer = null)
         {
             if ((source1 == null) != (source2 == null)) return false;
             if (source1 == null) return true;
 
-            return ((IStructuralEquatable)source1).Equals(other: source2, comparer: (IEqualityComparer)comparer ?? EqualityComparer<T>.Default);
+            comparer ??= EqualityComparer<T>.Default;
+
+            return ((IStructuralEquatable)source1).Equals(other: source2, comparer: (IEqualityComparer)comparer);
         }
 
         private static bool AreEqualEnumerables<T>(IEnumerable<T> source1, IEnumerable<T> source2, IEqualityComparer<T> comparer)
@@ -183,7 +210,7 @@ namespace DotNetX
 
 
 
-        public static int GetCollectionHashCode<T>(this IEnumerable<T> source, IEqualityComparer<T> comparer = null)
+        public static int GetCollectionHashCode<T>(this IEnumerable<T>? source, IEqualityComparer<T>? comparer = null)
         {
             if (source == null) return 382720733; // Null hash code. I picked a large prime number
 
@@ -200,7 +227,7 @@ namespace DotNetX
             return ComputeEnumerableHashCode(source, comparer ?? EqualityComparer<T>.Default);
         }
 
-        public static int GetCollectionHashCode<T>(this IReadOnlyCollection<T> source, IEqualityComparer<T> comparer = null)
+        public static int GetCollectionHashCode<T>(this IReadOnlyCollection<T>? source, IEqualityComparer<T>? comparer = null)
         {
             if (source == null) return 382720733; // Null hash code. I picked a large prime number
 
@@ -212,7 +239,7 @@ namespace DotNetX
             return ComputeEnumerableHashCode(source, comparer ?? EqualityComparer<T>.Default);
         }
 
-        public static int GetCollectionHashCode<T>(this IReadOnlyList<T> source, IEqualityComparer<T> comparer = null)
+        public static int GetCollectionHashCode<T>(this IReadOnlyList<T>? source, IEqualityComparer<T>? comparer = null)
         {
             if (source == null) return 382720733; // Null hash code. I picked a large prime number
 
@@ -222,7 +249,7 @@ namespace DotNetX
             }
 
             var code = new HashCode();
-            comparer = comparer ?? EqualityComparer<T>.Default;
+            comparer ??= EqualityComparer<T>.Default;
             var count = source.Count;
             for (int i = 0; i < count; i++)
             {
@@ -231,11 +258,13 @@ namespace DotNetX
             return code.ToHashCode();
         }
 
-        public static int GetCollectionHashCode<T>(this T[] source, IEqualityComparer<T> comparer = null)
+        public static int GetCollectionHashCode<T>(this T[]? source, IEqualityComparer<T>? comparer = null)
         {
             if (source == null) return 382720733; // Null hash code. I picked a large prime number
 
-            return ((IStructuralEquatable)source).GetHashCode(comparer: (IEqualityComparer)comparer ?? EqualityComparer<T>.Default);
+            comparer ??= EqualityComparer<T>.Default;
+
+            return ((IStructuralEquatable)source).GetHashCode(comparer: (IEqualityComparer)comparer);
         }
 
         private static int ComputeEnumerableHashCode<T>(IEnumerable<T> source, IEqualityComparer<T> comparer)
@@ -255,37 +284,22 @@ namespace DotNetX
         
         #region [ Graph Traversal ]
 
-        public static IEnumerable<T> CyclicGraphTraverse<T, K>(
-            this IEnumerable<T> source,
+        public static IEnumerable<TValue> CyclicGraphTraverse<TValue, TKey>(
+            this IEnumerable<TValue> source,
             bool issueFirst,
-            Func<T, IEnumerable<T>> getChildren,
-            Func<T, K> getKey,
-            IEqualityComparer<K> comparer = null)
+            Func<TValue, IEnumerable<TValue>?> getChildren,
+            Func<TValue, TKey> getKey,
+            IEqualityComparer<TKey>? comparer = null)
         {
-            if (source is null)
-            {
-                throw new ArgumentNullException(nameof(source));
-            }
-
-            if (getChildren is null)
-            {
-                throw new ArgumentNullException(nameof(getChildren));
-            }
-
-            if (getKey is null)
-            {
-                throw new ArgumentNullException(nameof(getKey));
-            }
-
-            comparer ??= EqualityComparer<K>.Default;
-            var keys = new HashSet<K>(comparer);
+            comparer ??= EqualityComparer<TKey>.Default;
+            var keys = new HashSet<TKey>(comparer);
 
             return source.SelectMany(item => Loop(item));
 
-            IEnumerable<T> Loop(T current)
+            IEnumerable<TValue> Loop(TValue current)
             {
                 var key = getKey(current);
-                if (!keys.Contains(key))
+                if (!keys!.Contains(key))
                 {
                     keys.Add(key);
                     if (issueFirst)
@@ -310,90 +324,90 @@ namespace DotNetX
             }
         }
 
-        public static IEnumerable<T> CyclicGraphTraverse<T>(
-            this IEnumerable<T> source,
+        public static IEnumerable<TValue> CyclicGraphTraverse<TValue>(
+            this IEnumerable<TValue> source,
             bool issueFirst,
-            Func<T, IEnumerable<T>> getChildren,
-            IEqualityComparer<T> comparer = null)
+            Func<TValue, IEnumerable<TValue>?> getChildren,
+            IEqualityComparer<TValue>? comparer = null)
         {
-            return CyclicGraphTraverse<T, T>(source, issueFirst, getChildren, Funcs.Identity, comparer);
+            return CyclicGraphTraverse<TValue, TValue>(source, issueFirst, getChildren, Funcs.Identity, comparer);
         }
 
-        public static IEnumerable<T> CyclicGraphTraverse<T, K>(
-            this T source,
+        public static IEnumerable<TValue> CyclicGraphTraverse<TValue, TKey>(
+            this TValue source,
             bool issueFirst,
-            Func<T, IEnumerable<T>> getChildren,
-            Func<T, K> getKey,
-            IEqualityComparer<K> comparer = null) =>
+            Func<TValue, IEnumerable<TValue>?> getChildren,
+            Func<TValue, TKey> getKey,
+            IEqualityComparer<TKey>? comparer = null) =>
             source.Singleton().CyclicGraphTraverse(issueFirst, getChildren, getKey, comparer);
 
-        public static IEnumerable<T> CyclicGraphTraverse<T>(
-            this T source,
+        public static IEnumerable<TValue> CyclicGraphTraverse<TValue>(
+            this TValue source,
             bool issueFirst,
-            Func<T, IEnumerable<T>> getChildren,
-            IEqualityComparer<T> comparer = null) =>
+            Func<TValue, IEnumerable<TValue>?> getChildren,
+            IEqualityComparer<TValue>? comparer = null) =>
             source.Singleton().CyclicGraphTraverse(issueFirst, getChildren, comparer);
 
 
-        public static IEnumerable<T> DepthFirstSearch<T, K>(
-            this IEnumerable<T> source,
-            Func<T, IEnumerable<T>> getChildren,
-            Func<T, K> getKey,
-            IEqualityComparer<K> comparer = null) =>
+        public static IEnumerable<TValue> DepthFirstSearch<TValue, TKey>(
+            this IEnumerable<TValue> source,
+            Func<TValue, IEnumerable<TValue>?> getChildren,
+            Func<TValue, TKey> getKey,
+            IEqualityComparer<TKey>? comparer = null) =>
             source.CyclicGraphTraverse(true, getChildren, getKey, comparer);
 
-        public static IEnumerable<T> DepthFirstSearch<T>(
-            this IEnumerable<T> source,
-            Func<T, IEnumerable<T>> getChildren,
-            IEqualityComparer<T> comparer = null) =>
+        public static IEnumerable<TValue> DepthFirstSearch<TValue>(
+            this IEnumerable<TValue> source,
+            Func<TValue, IEnumerable<TValue>?> getChildren,
+            IEqualityComparer<TValue>? comparer = null) =>
             source.CyclicGraphTraverse(true, getChildren, comparer);
 
-        public static IEnumerable<T> DepthFirstSearch<T, K>(
-            this T source,
-            Func<T, IEnumerable<T>> getChildren,
-            Func<T, K> getKey,
-            IEqualityComparer<K> comparer = null) =>
+        public static IEnumerable<TValue> DepthFirstSearch<TValue, TKey>(
+            this TValue source,
+            Func<TValue, IEnumerable<TValue>?> getChildren,
+            Func<TValue, TKey> getKey,
+            IEqualityComparer<TKey>? comparer = null) =>
             source.CyclicGraphTraverse(true, getChildren, getKey, comparer);
 
-        public static IEnumerable<T> DepthFirstSearch<T>(
-            this T source,
-            Func<T, IEnumerable<T>> getChildren,
-            IEqualityComparer<T> comparer = null) =>
+        public static IEnumerable<TValue> DepthFirstSearch<TValue>(
+            this TValue source,
+            Func<TValue, IEnumerable<TValue>?> getChildren,
+            IEqualityComparer<TValue>? comparer = null) =>
             source.CyclicGraphTraverse(true, getChildren, comparer);
 
 
-        public static IEnumerable<T> DepthLastSearch<T, K>(
-            this IEnumerable<T> source,
-            Func<T, IEnumerable<T>> getChildren,
-            Func<T, K> getKey,
-            IEqualityComparer<K> comparer = null) =>
+        public static IEnumerable<TValue> DepthLastSearch<TValue, TKey>(
+            this IEnumerable<TValue> source,
+            Func<TValue, IEnumerable<TValue>?> getChildren,
+            Func<TValue, TKey> getKey,
+            IEqualityComparer<TKey>? comparer = null) =>
             source.CyclicGraphTraverse(false, getChildren, getKey, comparer);
 
-        public static IEnumerable<T> DepthLastSearch<T>(
-            this IEnumerable<T> source,
-            Func<T, IEnumerable<T>> getChildren,
-            IEqualityComparer<T> comparer = null) =>
+        public static IEnumerable<TValue> DepthLastSearch<TValue>(
+            this IEnumerable<TValue> source,
+            Func<TValue, IEnumerable<TValue>?> getChildren,
+            IEqualityComparer<TValue>? comparer = null) =>
             source.CyclicGraphTraverse(false, getChildren, comparer);
 
-        public static IEnumerable<T> DepthLastSearch<T, K>(
-            this T source,
-            Func<T, IEnumerable<T>> getChildren,
-            Func<T, K> getKey,
-            IEqualityComparer<K> comparer = null) =>
+        public static IEnumerable<TValue> DepthLastSearch<TValue, TKey>(
+            this TValue source,
+            Func<TValue, IEnumerable<TValue>?> getChildren,
+            Func<TValue, TKey> getKey,
+            IEqualityComparer<TKey>? comparer = null) =>
             source.CyclicGraphTraverse(false, getChildren, getKey, comparer);
 
-        public static IEnumerable<T> DepthLastSearch<T>(
-            this T source,
-            Func<T, IEnumerable<T>> getChildren,
-            IEqualityComparer<T> comparer = null) =>
+        public static IEnumerable<TValue> DepthLastSearch<TValue>(
+            this TValue source,
+            Func<TValue, IEnumerable<TValue>?> getChildren,
+            IEqualityComparer<TValue>? comparer = null) =>
             source.CyclicGraphTraverse(false, getChildren, comparer);
 
 
-        public static IEnumerable<T> BreadthFirstSearch<T, K>(
-            this IEnumerable<T> source,
-            Func<T, IEnumerable<T>> getChildren,
-            Func<T, K> getKey,
-            IEqualityComparer<K> comparer = null)
+        public static IEnumerable<TValue> BreadthFirstSearch<TValue, TKey>(
+            this IEnumerable<TValue> source,
+            Func<TValue, IEnumerable<TValue>?> getChildren,
+            Func<TValue, TKey> getKey,
+            IEqualityComparer<TKey>? comparer = null)
         {
             if (source is null)
             {
@@ -410,9 +424,9 @@ namespace DotNetX
                 throw new ArgumentNullException(nameof(getKey));
             }
 
-            comparer ??= EqualityComparer<K>.Default;
-            var keys = new HashSet<K>(comparer);
-            var queue = new Queue<T>();
+            comparer ??= EqualityComparer<TKey>.Default;
+            var keys = new HashSet<TKey>(comparer);
+            var queue = new Queue<TValue>();
 
             EnqueueNewItems(source);
 
@@ -420,10 +434,15 @@ namespace DotNetX
             {
                 yield return current;
 
-                EnqueueNewItems(getChildren(current));
+                var children = getChildren(current);
+
+                if (children != null)
+                {
+                    EnqueueNewItems(children);
+                }
             }
 
-            void EnqueueNewItems(IEnumerable<T> itemSource)
+            void EnqueueNewItems(IEnumerable<TValue> itemSource)
             {
                 if (itemSource != null)
                 {
@@ -440,32 +459,32 @@ namespace DotNetX
             }
         }
 
-        public static IEnumerable<T> BreadthFirstSearch<T>(
-            this IEnumerable<T> source,
-            Func<T, IEnumerable<T>> getChildren,
-            IEqualityComparer<T> comparer = null) =>
+        public static IEnumerable<TValue> BreadthFirstSearch<TValue>(
+            this IEnumerable<TValue> source,
+            Func<TValue, IEnumerable<TValue>?> getChildren,
+            IEqualityComparer<TValue>? comparer = null) =>
             source.BreadthFirstSearch(getChildren, Funcs.Identity, comparer);
 
-        public static IEnumerable<T> BreadthFirstSearch<T, K>(
-            this T source,
-            Func<T, IEnumerable<T>> getChildren,
-            Func<T, K> getKey,
-            IEqualityComparer<K> comparer = null) =>
+        public static IEnumerable<TValue> BreadthFirstSearch<TValue, TKey>(
+            this TValue source,
+            Func<TValue, IEnumerable<TValue>?> getChildren,
+            Func<TValue, TKey> getKey,
+            IEqualityComparer<TKey>? comparer = null) =>
             source.Singleton().BreadthFirstSearch(getChildren, getKey, comparer);
 
-        public static IEnumerable<T> BreadthFirstSearch<T>(
-            this T source,
-            Func<T, IEnumerable<T>> getChildren,
-            IEqualityComparer<T> comparer = null) =>
+        public static IEnumerable<TValue> BreadthFirstSearch<TValue>(
+            this TValue source,
+            Func<TValue, IEnumerable<TValue>?> getChildren,
+            IEqualityComparer<TValue>? comparer = null) =>
             source.Singleton().BreadthFirstSearch(getChildren, Funcs.Identity, comparer);
 
 
-        public static IEnumerable<T> Unfold<T, K>(
-            this T source,
-            Func<T, T> getNext,
-            Func<T, K> getKey,
-            Func<T, bool> accepted,
-            IEqualityComparer<K> comparer = null)
+        public static IEnumerable<TValue> Unfold<TValue, TKey>(
+            this TValue source,
+            Func<TValue, TValue> getNext,
+            Func<TValue, TKey> getKey,
+            Func<TValue, bool> accepted,
+            IEqualityComparer<TKey>? comparer = null)
         {
             return source.Singleton().Where(accepted).DepthFirstSearch(
                 current =>
@@ -477,30 +496,30 @@ namespace DotNetX
                 comparer);
         }
 
-        public static IEnumerable<T> Unfold<T>(
-            this T source,
-            Func<T, T> getNext,
-            Func<T, bool> accepted,
-            IEqualityComparer<T> comparer = null)
+        public static IEnumerable<TValue> Unfold<TValue>(
+            this TValue source,
+            Func<TValue, TValue> getNext,
+            Func<TValue, bool> accepted,
+            IEqualityComparer<TValue>? comparer = null)
         {
             return source.Unfold(getNext, Funcs.Identity, accepted, comparer);
         }
 
-        public static IEnumerable<T> Unfold<T, K>(
-            this T source,
-            Func<T, T> getNext,
-            Func<T, K> getKey,
-            IEqualityComparer<K> comparer = null)
-            where T : class
+        public static IEnumerable<TValue> Unfold<TValue, TKey>(
+            this TValue source,
+            Func<TValue, TValue> getNext,
+            Func<TValue, TKey> getKey,
+            IEqualityComparer<TKey>? comparer = null)
+            where TValue : class
         {
             return source.Unfold(getNext, getKey, Predicate.IsNonNull, comparer);
         }
 
-        public static IEnumerable<T> Unfold<T>(
-            this T source,
-            Func<T, T> getNext,
-            IEqualityComparer<T> comparer = null)
-            where T : class
+        public static IEnumerable<TValue> Unfold<TValue>(
+            this TValue source,
+            Func<TValue, TValue> getNext,
+            IEqualityComparer<TValue>? comparer = null)
+            where TValue : class
         {
             return source.Unfold(getNext, Funcs.Identity, comparer);
         }
@@ -510,17 +529,17 @@ namespace DotNetX
 
         #region [ ToDictionary ]
 
-        public static Dictionary<TKey, TValue> ToDictionary<TKey, TValue>(this IEnumerable<KeyValuePair<TKey, TValue>> source, IEqualityComparer<TKey> comparer = null)
+        public static Dictionary<TKey, TValue> ToDictionary<TKey, TValue>(this IEnumerable<KeyValuePair<TKey, TValue>> source, IEqualityComparer<TKey>? comparer = null)
         {
             return new Dictionary<TKey, TValue>(source, comparer ?? EqualityComparer<TKey>.Default);
         }
 
-        public static Dictionary<TKey, TValue> ToDictionary<TKey, TValue>(this IEnumerable<Tuple<TKey, TValue>> source, IEqualityComparer<TKey> comparer = null)
+        public static Dictionary<TKey, TValue> ToDictionary<TKey, TValue>(this IEnumerable<Tuple<TKey, TValue>> source, IEqualityComparer<TKey>? comparer = null)
         {
             return source.ToDictionary(t => t.Item1, t => t.Item2, comparer ?? EqualityComparer<TKey>.Default);
         }
 
-        public static Dictionary<TKey, TValue> ToDictionary<TKey, TValue>(this IEnumerable<ValueTuple<TKey, TValue>> source, IEqualityComparer<TKey> comparer = null)
+        public static Dictionary<TKey, TValue> ToDictionary<TKey, TValue>(this IEnumerable<ValueTuple<TKey, TValue>> source, IEqualityComparer<TKey>? comparer = null)
         {
             return source.ToDictionary(t => t.Item1, t => t.Item2, comparer ?? EqualityComparer<TKey>.Default);
         }
@@ -532,6 +551,16 @@ namespace DotNetX
 
         public static void AddRange<T>(this ICollection<T> collection, IEnumerable<T> items)
         {
+            if (collection is null)
+            {
+                throw new ArgumentNullException(nameof(collection));
+            }
+
+            if (items is null)
+            {
+                throw new ArgumentNullException(nameof(items));
+            }
+
             foreach (var item in items)
             {
                 collection.Add(item);
@@ -543,12 +572,12 @@ namespace DotNetX
 
     public class StructuralEnumerableEqualityComparer<T> : IEqualityComparer<IEnumerable<T>>, IEqualityComparer
     {
-        public static IEqualityComparer<IEnumerable<T>> Default = new StructuralEnumerableEqualityComparer<T>();
+        public static readonly IEqualityComparer<IEnumerable<T>> Default = new StructuralEnumerableEqualityComparer<T>();
         private readonly IEqualityComparer<T> itemComparer;
 
-        public StructuralEnumerableEqualityComparer(IEqualityComparer<T> itemComparer = null)
+        public StructuralEnumerableEqualityComparer(IEqualityComparer<T>? itemComparer = null)
         {
-            this.itemComparer = itemComparer;
+            this.itemComparer = itemComparer ?? EqualityComparer<T>.Default;
         }
 
         public bool Equals(IEnumerable<T> x, IEnumerable<T> y) => x.IsEqualTo(y, itemComparer);
@@ -562,12 +591,12 @@ namespace DotNetX
 
     public class StructuralReadOnlyCollectionEqualityComparer<T> : IEqualityComparer<IReadOnlyCollection<T>>, IEqualityComparer
     {
-        public static IEqualityComparer<IReadOnlyCollection<T>> Default = new StructuralEnumerableEqualityComparer<T>();
+        public static readonly IEqualityComparer<IReadOnlyCollection<T>> Default = new StructuralEnumerableEqualityComparer<T>();
         private readonly IEqualityComparer<T> itemComparer;
 
-        public StructuralReadOnlyCollectionEqualityComparer(IEqualityComparer<T> itemComparer = null)
+        public StructuralReadOnlyCollectionEqualityComparer(IEqualityComparer<T>? itemComparer = null)
         {
-            this.itemComparer = itemComparer;
+            this.itemComparer = itemComparer ?? EqualityComparer<T>.Default;
         }
 
         public bool Equals(IReadOnlyCollection<T> x, IReadOnlyCollection<T> y) => x.IsEqualTo(y, itemComparer);
@@ -581,12 +610,12 @@ namespace DotNetX
 
     public class StructuralReadOnlyListEqualityComparer<T> : IEqualityComparer<IReadOnlyList<T>>, IEqualityComparer
     {
-        public static IEqualityComparer<IReadOnlyList<T>> Default = new StructuralEnumerableEqualityComparer<T>();
+        public static readonly IEqualityComparer<IReadOnlyList<T>> Default = new StructuralEnumerableEqualityComparer<T>();
         private readonly IEqualityComparer<T> itemComparer;
 
-        public StructuralReadOnlyListEqualityComparer(IEqualityComparer<T> itemComparer = null)
+        public StructuralReadOnlyListEqualityComparer(IEqualityComparer<T>? itemComparer = null)
         {
-            this.itemComparer = itemComparer;
+            this.itemComparer = itemComparer ?? EqualityComparer<T>.Default;
         }
 
         public bool Equals(IReadOnlyList<T> x, IReadOnlyList<T> y) => x.IsEqualTo(y, itemComparer);
@@ -600,12 +629,12 @@ namespace DotNetX
 
     public class StructuralArrayEqualityComparer<T> : IEqualityComparer<T[]>, IEqualityComparer
     {
-        public static IEqualityComparer<T[]> Default = new StructuralArrayEqualityComparer<T>();
+        public static readonly IEqualityComparer<T[]> Default = new StructuralArrayEqualityComparer<T>();
         private readonly IEqualityComparer<T> itemComparer;
 
-        public StructuralArrayEqualityComparer(IEqualityComparer<T> itemComparer = null)
+        public StructuralArrayEqualityComparer(IEqualityComparer<T>? itemComparer = null)
         {
-            this.itemComparer = itemComparer;
+            this.itemComparer = itemComparer ?? EqualityComparer<T>.Default;
         }
 
         public bool Equals(T[] x, T[] y) => x.IsEqualTo(y, itemComparer);

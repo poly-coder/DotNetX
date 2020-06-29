@@ -11,9 +11,9 @@ namespace DotNetX
             return v => ReferenceEquals(v, value);
         }
 
-        public static Func<T, bool> IsSamePredicate<T>(this T value, IEqualityComparer<T> comparer = null)
+        public static Func<T, bool> IsSamePredicate<T>(this T value, IEqualityComparer<T>? comparer = null)
         {
-            comparer = comparer ?? EqualityComparer<T>.Default;
+            comparer ??= EqualityComparer<T>.Default;
             return v => comparer.Equals(v, value);
         }
 

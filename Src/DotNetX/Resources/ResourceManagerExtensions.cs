@@ -30,7 +30,7 @@ namespace DotNetX.Resources
             string separator = ",")
             => resourceManager.LocalizedGetter(
                 name,
-                str => str.Split(separator).Select(s => s.Trim()).Where(s => s != "").ToArray());
+                str => str.Split(separator).Select(s => s.Trim()).Where(s => s.IsNotNullOrEmpty()).ToArray());
 
         public static ResourceManager GetResourceManager(this Type type)
         {

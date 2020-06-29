@@ -6,13 +6,17 @@ namespace DotNetX
     {
         public static byte[] ComputeMD5(this byte[] buffer)
         {
+#pragma warning disable CA5351
             using var hasher = MD5.Create();
+#pragma warning restore CA5351
             return hasher.ComputeHash(buffer);
         }
 
         public static byte[] ComputeSHA1(this byte[] buffer)
         {
+#pragma warning disable CA5350
             using var hasher = SHA1.Create();
+#pragma warning restore CA5350
             return hasher.ComputeHash(buffer);
         }
 

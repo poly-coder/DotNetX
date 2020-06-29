@@ -32,6 +32,10 @@ namespace DotNetX.Reflection
 
         public static string FormatName(this Type type, bool fullName = false)
         {
+            if (type is null)
+            {
+                throw new ArgumentNullException(nameof(type));
+            }
             // TODO: Check other special types like delegates, built-in, ...
 
             if (!fullName && StandardTypeShorFormats.TryGetValue(type, out var format))
@@ -79,8 +83,13 @@ namespace DotNetX.Reflection
             return typeName;
         }
 
-        public static string FormatSignature(this MethodInfo method, string methodName = null, bool fullName = false)
+        public static string FormatSignature(this MethodInfo method, string? methodName = null, bool fullName = false)
         {
+            if (method is null)
+            {
+                throw new ArgumentNullException(nameof(method));
+            }
+
             methodName ??= fullName ? $"{method.DeclaringType.FormatName(true)}.{method.Name}" : method.Name;
             var sb = new StringBuilder();
             sb.Append(method.ReturnType.FormatName(fullName)).Append(" ").Append(methodName).Append("(");
@@ -106,10 +115,15 @@ namespace DotNetX.Reflection
 
         public static IEnumerable<MethodInfo> SelectMethods(this Type type,
             BindingFlags bindingFlags = BindingFlags.Public | BindingFlags.Instance,
-            Func<string, bool> isValidMethodName = null,
-            Func<ParameterInfo[], bool> isValidInputType = null,
-            Func<ParameterInfo, bool> isValidReturnType = null)
+            Func<string, bool>? isValidMethodName = null,
+            Func<ParameterInfo[], bool>? isValidInputType = null,
+            Func<ParameterInfo, bool>? isValidReturnType = null)
         {
+            if (type is null)
+            {
+                throw new ArgumentNullException(nameof(type));
+            }
+
             IEnumerable<MethodInfo> query = type.GetMethods(bindingFlags);
             query = isValidMethodName == null ? query : query.Where(method => isValidMethodName(method.Name));
             query = isValidReturnType == null ? query : query.Where(method => isValidReturnType(method.ReturnParameter));
@@ -124,23 +138,53 @@ namespace DotNetX.Reflection
 
         public static IEnumerable<Attribute> GetAttributes(this ICustomAttributeProvider provider, Type attributeType, bool inherit)
         {
+            if (provider is null)
+            {
+                throw new ArgumentNullException(nameof(provider));
+            }
+
+            if (attributeType is null)
+            {
+                throw new ArgumentNullException(nameof(attributeType));
+            }
+
             return provider.GetCustomAttributes(attributeType, inherit).Cast<Attribute>();
         }
 
         public static IEnumerable<TAttribute> GetAttributes<TAttribute>(this ICustomAttributeProvider provider, bool inherit)
             where TAttribute : Attribute
         {
+            if (provider is null)
+            {
+                throw new ArgumentNullException(nameof(provider));
+            }
+
             return provider.GetAttributes(typeof(TAttribute), inherit).Cast<TAttribute>();
         }
 
         public static Attribute GetAttribute(this ICustomAttributeProvider provider, Type attributeType, bool inherit)
         {
+            if (provider is null)
+            {
+                throw new ArgumentNullException(nameof(provider));
+            }
+
+            if (attributeType is null)
+            {
+                throw new ArgumentNullException(nameof(attributeType));
+            }
+
             return provider.GetAttributes(attributeType, inherit).FirstOrDefault();
         }
 
         public static TAttribute GetAttribute<TAttribute>(this ICustomAttributeProvider provider, bool inherit)
             where TAttribute : Attribute
         {
+            if (provider is null)
+            {
+                throw new ArgumentNullException(nameof(provider));
+            }
+
             return provider.GetAttributes<TAttribute>(inherit).FirstOrDefault();
         }
 
@@ -153,6 +197,16 @@ namespace DotNetX.Reflection
             where TAttribute : Attribute
             where TValue : class
         {
+            if (ofConvention is null)
+            {
+                throw new ArgumentNullException(nameof(ofConvention));
+            }
+
+            if (ofAttribute is null)
+            {
+                throw new ArgumentNullException(nameof(ofAttribute));
+            }
+
             var attr = provider.GetAttribute<TAttribute>(inherit);
             if (attr != null)
             {
@@ -174,6 +228,16 @@ namespace DotNetX.Reflection
             where TAttribute : Attribute
             where TValue : struct
         {
+            if (ofConvention is null)
+            {
+                throw new ArgumentNullException(nameof(ofConvention));
+            }
+
+            if (ofAttribute is null)
+            {
+                throw new ArgumentNullException(nameof(ofAttribute));
+            }
+
             var attr = provider.GetAttribute<TAttribute>(inherit);
             if (attr != null)
             {
@@ -254,6 +318,16 @@ namespace DotNetX.Reflection
 
         public static bool ConformsTo(this Type sourceType, Type shapeType)
         {
+            if (sourceType is null)
+            {
+                throw new ArgumentNullException(nameof(sourceType));
+            }
+
+            if (shapeType is null)
+            {
+                throw new ArgumentNullException(nameof(shapeType));
+            }
+
             if (shapeType.IsAssignableFrom(sourceType))
             {
                 return true;
@@ -274,6 +348,21 @@ namespace DotNetX.Reflection
             Type typeDefinition, 
             params Type[] arguments)
         {
+            if (sourceType is null)
+            {
+                throw new ArgumentNullException(nameof(sourceType));
+            }
+
+            if (typeDefinition is null)
+            {
+                throw new ArgumentNullException(nameof(typeDefinition));
+            }
+
+            if (arguments is null)
+            {
+                throw new ArgumentNullException(nameof(arguments));
+            }
+
             if (!sourceType.IsGenericType) return false;
 
             Type sourceTypeDefinition = sourceType.GetGenericTypeDefinition();
@@ -300,6 +389,21 @@ namespace DotNetX.Reflection
             Func<Type, bool> typeDefinitionPredicate, 
             params Func<Type, bool>[] argumentPredicates)
         {
+            if (typeDefinitionPredicate is null)
+            {
+                throw new ArgumentNullException(nameof(typeDefinitionPredicate));
+            }
+
+            if (argumentPredicates is null)
+            {
+                throw new ArgumentNullException(nameof(argumentPredicates));
+            }
+
+            if (sourceType is null)
+            {
+                throw new ArgumentNullException(nameof(sourceType));
+            }
+
             if (!sourceType.IsGenericType) return false;
 
             if (!typeDefinitionPredicate(sourceType.GetGenericTypeDefinition())) return false;

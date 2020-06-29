@@ -8,7 +8,7 @@ namespace DotNetX.Serialization
         private readonly ITextSerializer textSerializer;
         private readonly Encoding encoding;
 
-        public TextEncodedBinarySerializer(ITextSerializer textSerializer, Encoding encoding = null)
+        public TextEncodedBinarySerializer(ITextSerializer textSerializer, Encoding? encoding = null)
         {
             this.textSerializer = textSerializer ?? throw new ArgumentNullException(nameof(textSerializer));
             this.encoding = encoding ?? Encoding.UTF8;
@@ -27,7 +27,7 @@ namespace DotNetX.Serialization
 
         public byte[] Serialize<T>(T value)
         {
-            return Serialize(typeof(T), value);
+            return Serialize(typeof(T), value!);
         }
 
         public byte[] Serialize(Type type, object value)

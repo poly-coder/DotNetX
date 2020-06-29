@@ -22,11 +22,11 @@ namespace DotNetX
             throw exn;
         }
 
-        public static void AddObject<T>(this SerializationInfo info, string name, T value)
+        public static void AddObject<T>(this SerializationInfo info, string name, T? value)
             where T : class
         {
             if (info == null) return;
-            if (value != null)
+            if (value == null)
             {
                 info.AddValue($"{name}_Type", "");
             }
@@ -37,7 +37,7 @@ namespace DotNetX
             }
         }
 
-        public static T GetObject<T>(this SerializationInfo info, string name)
+        public static T? GetObject<T>(this SerializationInfo? info, string name)
             where T : class
         {
             if (info == null) return null;
@@ -50,11 +50,16 @@ namespace DotNetX
             return info.GetValue(name, type) as T;
         }
 
-        public static object GetObject(this SerializationInfo info, string name) => info.GetObject<object>(name);
+        public static object? GetObject(this SerializationInfo? info, string name) => info.GetObject<object>(name);
 
-        public static TException FindInner<TException>(this Exception exception, Func<TException, bool> predicate = null)
+        public static TException? FindInner<TException>(this Exception exception, Func<TException, bool>? predicate = null)
             where TException : Exception
         {
+            if (exception is null)
+            {
+                throw new ArgumentNullException(nameof(exception));
+            }
+
             switch (exception)
             {
                 case TException ex:

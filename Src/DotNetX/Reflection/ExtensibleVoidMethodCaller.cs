@@ -19,6 +19,26 @@ namespace DotNetX.Reflection
 
         public void Call(T instance, IServiceProvider services, object[] requiredInputs, object[] optionalInputs)
         {
+            if (instance is null)
+            {
+                throw new ArgumentNullException(nameof(instance));
+            }
+
+            if (services is null)
+            {
+                throw new ArgumentNullException(nameof(services));
+            }
+
+            if (requiredInputs is null)
+            {
+                throw new ArgumentNullException(nameof(requiredInputs));
+            }
+
+            if (optionalInputs is null)
+            {
+                throw new ArgumentNullException(nameof(optionalInputs));
+            }
+
             innerCaller.Call(instance, services, requiredInputs, optionalInputs);
         }
     }
@@ -40,6 +60,26 @@ namespace DotNetX.Reflection
 
         public void Call(T instance, IServiceProvider services, TInput input, params object[] optionalInputs)
         {
+            if (instance is null)
+            {
+                throw new ArgumentNullException(nameof(instance));
+            }
+
+            if (services is null)
+            {
+                throw new ArgumentNullException(nameof(services));
+            }
+
+            if (input is null)
+            {
+                throw new ArgumentNullException(nameof(input));
+            }
+
+            if (optionalInputs is null)
+            {
+                throw new ArgumentNullException(nameof(optionalInputs));
+            }
+
             innerCaller.Call(instance, services, new object[] { input }, optionalInputs);
         }
     }

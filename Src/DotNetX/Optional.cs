@@ -4,10 +4,12 @@ using System.Linq;
 
 namespace DotNetX
 {
+#pragma warning disable CA1716
     public struct Optional<T> : IEquatable<Optional<T>>
+#pragma warning restore CA1716
     {
-        public static Optional<T> None => default;
-        public static Optional<T> Some(T value) => new Optional<T>(value);
+        internal static Optional<T> None => default;
+        internal static Optional<T> Some(T value) => new Optional<T>(value);
 
         internal readonly bool isSome;
         internal readonly T value;
@@ -62,6 +64,16 @@ namespace DotNetX
 
         public TResult MatchWith<TResult>(Func<T, TResult> onSome, Func<TResult> onNone)
         {
+            if (onSome is null)
+            {
+                throw new ArgumentNullException(nameof(onSome));
+            }
+
+            if (onNone is null)
+            {
+                throw new ArgumentNullException(nameof(onNone));
+            }
+
             if (isSome)
             {
                 return onSome(value);
@@ -74,6 +86,16 @@ namespace DotNetX
 
         public void MatchWith(Action<T> onSome, Action onNone)
         {
+            if (onSome is null)
+            {
+                throw new ArgumentNullException(nameof(onSome));
+            }
+
+            if (onNone is null)
+            {
+                throw new ArgumentNullException(nameof(onNone));
+            }
+
             if (isSome)
             {
                 onSome(value);
@@ -93,7 +115,9 @@ namespace DotNetX
             }
             else
             {
+#pragma warning disable CS8601 // Possible null reference assignment.
                 value = default;
+#pragma warning restore CS8601 // Possible null reference assignment.
                 return false;
             }
         }
@@ -119,7 +143,9 @@ namespace DotNetX
 
     }
 
+#pragma warning disable CA1716
     public static class Optional
+#pragma warning restore CA1716
     {
         public static Optional<T> None<T>() => Optional<T>.None;
 

@@ -23,10 +23,10 @@ namespace DotNetX.Reflection
 
         public ExtensibleMethodCaller(
             string name,
-            Func<string, bool> isValidMethodName = null,
-            Func<ParameterInfo[], bool> isValidInputType = null,
-            Func<ParameterInfo, bool> isValidReturnType = null,
-            CallExtensibleMethod onNotFound = null,
+            Func<string, bool>? isValidMethodName = null,
+            Func<ParameterInfo[], bool>? isValidInputType = null,
+            Func<ParameterInfo, bool>? isValidReturnType = null,
+            CallExtensibleMethod? onNotFound = null,
             BindingFlags bindingFlags = BindingFlags.Public | BindingFlags.Instance,
             bool requiredServices = true)
         {
@@ -91,7 +91,7 @@ namespace DotNetX.Reflection
                 return onNotFound(instance, services, requiredInputs, optionalInputs);
             }
 
-            (MethodInfo method, object[] parameters) = instanceInfo.GetMethodToCall(services, requiredInputs, optionalInputs);
+            (MethodInfo? method, object[]? parameters) = instanceInfo.GetMethodToCall(services, requiredInputs, optionalInputs);
 
             if (method == null || parameters == null)
             {
@@ -114,7 +114,7 @@ namespace DotNetX.Reflection
                 $"Method caller {Name} did not found a method for type {instance.GetType().FullName} {FormatInputTypes(requiredInputs, "required")} and {FormatInputTypes(optionalInputs, "optional")}");
         }
 
-        private bool HaveNullInputs(object[] inputs)
+        private static bool HaveNullInputs(object[] inputs)
         {
             if (inputs == null || inputs.Length == 0)
             {
@@ -123,7 +123,7 @@ namespace DotNetX.Reflection
             return inputs.Any(e => e == null);
         }
 
-        private string FormatInputTypes(object[] inputs, string inputType)
+        private static string FormatInputTypes(object[] inputs, string inputType)
         {
             if (inputs == null || inputs.Length == 0)
             {
@@ -135,14 +135,16 @@ namespace DotNetX.Reflection
 
         private SpecificTypeInfo CreateSpecificTypeInfo(Type type)
         {
-            var methods = type
+            MethodInfo[] methods = type
                 .SelectMethods(BindingFlags, isValidMethodName, isValidInputType, isValidReturnType)
                 .ToArray();
 
-            return new SpecificTypeInfo(type, methods.Length == 0 ? null : methods);
+            return new SpecificTypeInfo(type, methods);
         }
 
+#pragma warning disable CA1034 // Nested types should not be visible
         public class SpecificTypeInfo
+#pragma warning restore CA1034 // Nested types should not be visible
         {
             private readonly ConcurrentDictionary<InputParameterTypesKey, InputParameterSignature> cache = new ConcurrentDictionary<InputParameterTypesKey, InputParameterSignature>();
 
@@ -153,11 +155,26 @@ namespace DotNetX.Reflection
             }
 
             public bool IsEmpty => Methods == null;
-            public readonly Type DeclaringType;
-            public readonly IEnumerable<MethodInfo> Methods;
+            public Type DeclaringType { get; }
+            public IEnumerable<MethodInfo> Methods { get; }
 
-            public (MethodInfo method, object[] parameters) GetMethodToCall(IServiceProvider services, object[] requiredInputs, object[] optionalInputs)
+            public (MethodInfo? method, object[]? parameters) GetMethodToCall(IServiceProvider services, object[] requiredInputs, object[] optionalInputs)
             {
+                if (services is null)
+                {
+                    throw new ArgumentNullException(nameof(services));
+                }
+
+                if (requiredInputs is null)
+                {
+                    throw new ArgumentNullException(nameof(requiredInputs));
+                }
+
+                if (optionalInputs is null)
+                {
+                    throw new ArgumentNullException(nameof(optionalInputs));
+                }
+
                 var callKey = new InputParameterTypesKey(
                     requiredInputs.Select(e => e.GetType()).ToArray(),
                     optionalInputs.Select(e => e.GetType()).ToArray());
@@ -174,8 +191,8 @@ namespace DotNetX.Reflection
 
             private InputParameterSignature CreateSignature(InputParameterTypesKey callKey)
             {
-                var candidates = Methods
-                    .Select(method =>
+                (MethodInfo? method, InputParameterPosition[]? positions)[] candidates = Methods
+                    .Select<MethodInfo, (MethodInfo? method, InputParameterPosition[]? positions)>(method =>
                     {
                         var parameters = method.GetParameters();
                         var positions = new InputParameterPosition[parameters.Length];
@@ -221,10 +238,7 @@ namespace DotNetX.Reflection
                 {
                     var requiredTypes = callKey.RequiredInputTypes.Select(t => t.FormatName()).Concatenate();
                     var optionalTypes = callKey.OptionalInputTypes.Select(t => t.FormatName()).Concatenate();
-                    throw new InvalidOperationException(
-                        $"More than one candidate was found for:\n" +
-                        "  required types: [{requiredTypes}]\n" + 
-                        "  optional types: [{optionalTypes}]");
+                    throw new InvalidOperationException(Resource.Error_MoreThanOneCandidateFound.Format(requiredTypes, optionalTypes));
                 }
 
                 if (candidates.Length == 0)
@@ -232,16 +246,16 @@ namespace DotNetX.Reflection
                     return InputParameterSignature.Empty;
                 }
 
-                return new InputParameterSignature(candidates[0].method, candidates[0].positions);
+                return new InputParameterSignature(candidates[0].method!, candidates[0].positions!);
             }
         }
 
-        public class InputParameterTypesKey : IEquatable<InputParameterTypesKey>
+        internal class InputParameterTypesKey : IEquatable<InputParameterTypesKey>
         {
             static readonly IEqualityComparer<IReadOnlyList<Type>> comparer = StructuralReadOnlyListEqualityComparer<Type>.Default;
 
-            public readonly IReadOnlyList<Type> RequiredInputTypes;
-            public readonly IReadOnlyList<Type> OptionalInputTypes;
+            public IReadOnlyList<Type> RequiredInputTypes { get; }
+            public IReadOnlyList<Type> OptionalInputTypes { get; }
 
             internal InputParameterTypesKey(IReadOnlyList<Type> requiredInputTypes, IReadOnlyList<Type> optionalInputTypes)
             {
@@ -254,10 +268,14 @@ namespace DotNetX.Reflection
                 return Equals(obj as InputParameterTypesKey);
             }
 
-            public bool Equals(InputParameterTypesKey other)
+            public bool Equals(InputParameterTypesKey? other)
             {
-                return other != null &&
-                    comparer.Equals(RequiredInputTypes, other.RequiredInputTypes) &&
+                if (other is null)
+                {
+                    return false;
+                }
+
+                return comparer.Equals(RequiredInputTypes, other.RequiredInputTypes) &&
                     comparer.Equals(OptionalInputTypes, other.OptionalInputTypes);
             }
 
@@ -280,12 +298,12 @@ namespace DotNetX.Reflection
             }
         }
 
-        public class InputParameterSignature
+        internal class InputParameterSignature
         {
             public static readonly InputParameterSignature Empty = new InputParameterSignature();
 
-            public readonly MethodInfo Method;
-            public readonly IReadOnlyList<InputParameterPosition> Positions;
+            public MethodInfo? Method { get; }
+            public IReadOnlyList<InputParameterPosition>? Positions { get; }
 
             private InputParameterSignature()
             {
@@ -301,6 +319,11 @@ namespace DotNetX.Reflection
 
             public object[] CreateParameters(IServiceProvider services, object[] requiredInputs, object[] optionalInputs)
             {
+                if (Positions is null)
+                {
+                    throw new InvalidOperationException(Resource.Error_EmptySignature);
+                }
+
                 int count = Positions.Count;
                 var parameters = new object[count];
                 for (int i = 0; i < count; i++)
@@ -332,7 +355,7 @@ namespace DotNetX.Reflection
             Optional,
         }
 
-        public class InputParameterPosition
+        internal class InputParameterPosition
         {
             public InputParameterPosition(Type serviceType)
             {
@@ -345,11 +368,11 @@ namespace DotNetX.Reflection
             {
                 ParameterSource = isRequired ? InputParameterPositionType.Required : InputParameterPositionType.Optional;
                 Index = index;
-                ServiceType = null;
+                ServiceType = default;
             }
 
             public InputParameterPositionType ParameterSource { get; }
-            public Type ServiceType { get; }
+            public Type? ServiceType { get; }
             public int Index { get; }
         }
     }
@@ -361,7 +384,7 @@ namespace DotNetX.Reflection
 
         public ExtensibleMethodCaller(
             ExtensibleMethodCaller innerCaller,
-            Func<object, TResult> toResult = null)
+            Func<object, TResult>? toResult = null)
         {
             this.innerCaller = innerCaller ?? throw new ArgumentNullException(nameof(innerCaller));
             this.toResult = toResult ?? (obj => (TResult)obj);
@@ -374,6 +397,26 @@ namespace DotNetX.Reflection
 
         public TResult Call(T instance, IServiceProvider services, object[] requiredInputs, object[] optionalInputs)
         {
+            if (instance is null)
+            {
+                throw new ArgumentNullException(nameof(instance));
+            }
+
+            if (services is null)
+            {
+                throw new ArgumentNullException(nameof(services));
+            }
+
+            if (requiredInputs is null)
+            {
+                throw new ArgumentNullException(nameof(requiredInputs));
+            }
+
+            if (optionalInputs is null)
+            {
+                throw new ArgumentNullException(nameof(optionalInputs));
+            }
+
             var obj = innerCaller.Call(instance, services, requiredInputs, optionalInputs);
 
             return toResult(obj);
@@ -387,7 +430,7 @@ namespace DotNetX.Reflection
 
         public ExtensibleMethodCaller(
             ExtensibleMethodCaller innerCaller,
-            Func<object, TResult> toResult = null)
+            Func<object, TResult>? toResult = null)
         {
             this.innerCaller = innerCaller ?? throw new ArgumentNullException(nameof(innerCaller));
             this.toResult = toResult ?? (obj => (TResult)obj);
@@ -400,6 +443,26 @@ namespace DotNetX.Reflection
 
         public TResult Call(T instance, IServiceProvider services, TInput input, params object[] optionalInputs)
         {
+            if (instance is null)
+            {
+                throw new ArgumentNullException(nameof(instance));
+            }
+
+            if (services is null)
+            {
+                throw new ArgumentNullException(nameof(services));
+            }
+
+            if (input is null)
+            {
+                throw new ArgumentNullException(nameof(input));
+            }
+
+            if (optionalInputs is null)
+            {
+                throw new ArgumentNullException(nameof(optionalInputs));
+            }
+
             var obj = innerCaller.Call(instance, services, new object[] { input }, optionalInputs);
 
             return toResult(obj);

@@ -1,6 +1,7 @@
 ﻿using FluentAssertions;
 using NUnit.Framework;
 using System;
+using System.Globalization;
 using System.Linq;
 
 namespace DotNetX.Tests
@@ -79,7 +80,7 @@ namespace DotNetX.Tests
         [Test]
         public static void OptionalNoneBindOnSomeShouldReturnNone()
         {
-            Optional.None<int>().Bind(v => Optional.Some(v.ToString())).Should().Be(Optional.None<string>());
+            Optional.None<int>().Bind(v => Optional.Some(v.ToString(CultureInfo.InvariantCulture))).Should().Be(Optional.None<string>());
         }
 
         [Test]
@@ -91,19 +92,19 @@ namespace DotNetX.Tests
         [Test]
         public static void OptionalSomeBindOnSomeShouldReturnSome()
         {
-            Optional.Some(42).Bind(v => Optional.Some(v.ToString())).Should().Be(Optional.Some("42"));
+            Optional.Some(42).Bind(v => Optional.Some(v.ToString(CultureInfo.InvariantCulture))).Should().Be(Optional.Some("42"));
         }
 
         [Test]
         public static void OptionalNoneMapShouldReturnNone()
         {
-            Optional.None<int>().Map(v => v.ToString()).Should().Be(Optional.None<string>());
+            Optional.None<int>().Map(v => v.ToString(CultureInfo.InvariantCulture)).Should().Be(Optional.None<string>());
         }
 
         [Test]
         public static void OptionalSomeMapShouldReturnSome()
         {
-            Optional.Some(42).Map(v => v.ToString()).Should().Be(Optional.Some("42"));
+            Optional.Some(42).Map(v => v.ToString(CultureInfo.InvariantCulture)).Should().Be(Optional.Some("42"));
         }
 
         [Test]
