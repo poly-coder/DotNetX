@@ -2,7 +2,7 @@ name: Publish
 
 on:
   push:
-    tags: [ v* ]
+    branches: [ master ]
 
 jobs:
   publish:
@@ -43,11 +43,9 @@ jobs:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         minimum_coverage: 75
 
-    - name: Pack
+    - name: Pack and Publish
       run: |
-        dotnet pack --configuration Release --output ./Releases/nupkg ./Src/DotNetX
-        dotnet pack --configuration Release --output ./Releases/nupkg ./Src/DotNetX.KeyValueStorage
-        dotnet pack --configuration Release --output ./Releases/nupkg ./Src/DotNetX.KeyValueStorage.Azure.Blobs
-
-    - name: Publish
-      run: dotnet nuget push ./Releases/nupkg/*.nupkg --source https://api.nuget.org/v3/index.json --api-key ${{ secrets.NUGET_TOKEN }}
+        dotnet pack --configuration Release --output . ./Src/DotNetX
+        dotnet pack --configuration Release --output . ./Src/DotNetX.KeyValueStorage
+        dotnet pack --configuration Release --output . ./Src/DotNetX.KeyValueStorage.Azure.Blobs
+        dotnet nuget push *.nupkg --source https://api.nuget.org/v3/index.json --skip-duplicate --api-key ${{ secrets.NUGET_TOKEN }}
