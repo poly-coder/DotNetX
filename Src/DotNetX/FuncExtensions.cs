@@ -1,5 +1,5 @@
 using System;
-using System.Runtime.InteropServices.ComTypes;
+using System.Threading.Tasks;
 
 namespace DotNetX
 {
@@ -58,5 +58,14 @@ namespace DotNetX
         {
             return b => source(mapper(b));
         }
+
+        public static Func<ValueTask<T>> AsValueTask<T>(this Func<T> func) => ()
+            => new ValueTask<T>(func());
+
+        public static Func<A, ValueTask<T>> AsValueTaskResult<A, T>(this Func<A, T> func) =>
+            (A a) => new ValueTask<T>(func(a));
+
+        public static Func<A, Task<T>> AsTaskResult<A, T>(this Func<A, T> func) =>
+            (A a) => Task.FromResult(func(a));
     }
 }

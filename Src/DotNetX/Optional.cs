@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace DotNetX
 {
@@ -156,9 +157,19 @@ namespace DotNetX
             return optional.MatchWith(f, None<B>);
         }
 
+        public static Task<Optional<B>> BindAsync<A, B>(this Optional<A> optional, Func<A, Task<Optional<B>>> f)
+        {
+            return optional.MatchWith(f, () => Task.FromResult(Optional<B>.None));
+        }
+
         public static Optional<B> Map<A, B>(this Optional<A> optional, Func<A, B> f)
         {
             return optional.Bind(a => Some(f(a)));
+        }
+
+        public static Task<Optional<B>> MapAsync<A, B>(this Optional<A> optional, Func<A, Task<B>> f)
+        {
+            return optional.BindAsync(async a => Some(await f(a)));
         }
 
         public static IEnumerable<T> AsEnumerable<T>(this Optional<T> optional)

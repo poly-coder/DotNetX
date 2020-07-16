@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <PackageId>DotNetX.KeyValueStorage.Azure.Blobs</PackageId>
+    <Version>0.0.1</Version>
+    <Authors>Iskander Sierra</Authors>
+    <Company>PolyCoder</Company>
+    <Product>PolyCoder CSharp Framework</Product>
+    <Description>Key Value Storage implementation over Azure Blobs</Description>
+    <PackageProjectUrl>https://github.com/poly-coder/DotNetX</PackageProjectUrl>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <AssemblyName>DotNetX.KeyValueStorage.Azure.Blobs</AssemblyName>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Azure.Storage.Blobs" Version="12.4.4" />
+    <PackageReference Include="System.Linq.Async" Version="4.1.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DotNetX.KeyValueStorage\DotNetX.KeyValueStorage.csproj" />
+    <ProjectReference Include="..\DotNetX\DotNetX.csproj" />
+  </ItemGroup>
+
+</Project>

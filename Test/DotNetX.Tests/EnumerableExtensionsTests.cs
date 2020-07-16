@@ -31,15 +31,15 @@ namespace DotNetX.Tests
         [Test]
         public void TwoNullEnumerablesAreEqual()
         {
-            IEnumerable<int> e1 = null;
-            IEnumerable<int> e2 = null;
+            IEnumerable<int>? e1 = null;
+            IEnumerable<int>? e2 = null;
             e1.IsEqualTo(e2).Should().BeTrue();
         }
 
         [Property]
         public bool NullEnumerablesIsNotEqualToAnyArray(NonNull<int[]> array)
         {
-            IEnumerable<int> e1 = null;
+            IEnumerable<int>? e1 = null;
             e1.IsEqualTo(array.Get).Should().BeFalse();
             array.Get.IsEqualTo(e1).Should().BeFalse();
             return true;
@@ -96,15 +96,15 @@ namespace DotNetX.Tests
         [Test]
         public void TwoNullCollectionsAreEqual()
         {
-            IReadOnlyCollection<int> e1 = null;
-            IReadOnlyCollection<int> e2 = null;
+            IReadOnlyCollection<int>? e1 = null;
+            IReadOnlyCollection<int>? e2 = null;
             e1.IsEqualTo(e2).Should().BeTrue();
         }
 
         [Property]
         public bool NullCollectionsIsNotEqualToAnyArray(NonNull<int[]> array)
         {
-            IReadOnlyCollection<int> e1 = null;
+            IReadOnlyCollection<int>? e1 = null;
             e1.IsEqualTo(array.Get).Should().BeFalse();
             array.Get.IsEqualTo(e1).Should().BeFalse();
             return true;
