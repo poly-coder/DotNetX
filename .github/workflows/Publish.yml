@@ -44,7 +44,10 @@ jobs:
         minimum_coverage: 75
 
     - name: Pack
-      run: dotnet pack --configuration Release --output ./Releases/nupkg ./Src/DotNetX
+      run: |
+        dotnet pack --configuration Release --output ./Releases/nupkg ./Src/DotNetX
+        dotnet pack --configuration Release --output ./Releases/nupkg ./Src/DotNetX.KeyValueStorage
+        dotnet pack --configuration Release --output ./Releases/nupkg ./Src/DotNetX.KeyValueStorage.Azure.Blobs
 
     - name: Publish
       run: dotnet nuget push ./Releases/nupkg/*.nupkg --source https://api.nuget.org/v3/index.json --api-key ${{ secrets.NUGET_TOKEN }}
