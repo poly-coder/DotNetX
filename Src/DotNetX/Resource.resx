@@ -120,6 +120,9 @@
   <data name="Error_EmptySignature" xml:space="preserve">
     <value>This method represents an empty signature. Do not use it to call!</value>
   </data>
+  <data name="Error_HexStringLengthMustBeEven" xml:space="preserve">
+    <value>Hex string must contain an even number of hex digits</value>
+  </data>
   <data name="Error_MoreThanOneCandidateFound" xml:space="preserve">
     <value>More than one candidate was found for:
   required types: [{0}]

@@ -291,7 +291,7 @@ namespace DotNetX
 
             if (value.Length % 2 != 0)
             {
-                throw new ArgumentException("hex string must contain an even number of hex digits");
+                throw new ArgumentException(Resource.Error_HexStringLengthMustBeEven);
             }
             var bytes = new byte[value.Length / 2];
             for (int i = 0; i < bytes.Length; i++)

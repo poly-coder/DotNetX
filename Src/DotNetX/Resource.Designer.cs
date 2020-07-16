@@ -70,6 +70,15 @@ namespace DotNetX {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Hex string must contain an even number of hex digits.
+        /// </summary>
+        internal static string Error_HexStringLengthMustBeEven {
+            get {
+                return ResourceManager.GetString("Error_HexStringLengthMustBeEven", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to More than one candidate was found for:
         ///  required types: [{0}]
         ///  optional types: [{1}].
