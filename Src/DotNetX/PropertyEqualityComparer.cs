@@ -27,4 +27,12 @@ namespace DotNetX
         int IEqualityComparer.GetHashCode(object obj) =>
             obj is T item ? GetHashCode(item) : (obj == null ? 0 : obj.GetHashCode());
     }
+
+    public static class PropertyEqualityComparer
+    {
+        public static PropertyEqualityComparer<T, P> Create<T, P>(Func<T, P> getProperty, IEqualityComparer<P>? propertyComparer = null)
+        {
+            return new PropertyEqualityComparer<T, P>(getProperty, propertyComparer);
+        }
+    }
 }
