@@ -2,6 +2,7 @@
 using DotNetX.Repl.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using System;
+using System.Collections.Generic;
 using System.Net.Http;
 using System.Threading.Tasks;
 
@@ -37,11 +38,11 @@ namespace HttpSimpleRepl
                     .WithName("conn")
                     .WithName("c")
                     .WithCaption("Connect to an HTTP endpoint")
+                    .WithExecute(ExecuteConnect)
                     .WithDescription("Configures the directory structure and base address of the api server based on the arguments and options specified. At least one of [rootAddress], [--base baseAddress] or [--swagger swaggerAddress] must be specified")
                     
                     .WithPositional("root", p => p
                         .WithTypeName("rootAddress")
-                        .WithIsRequired()
                         .WithCaption("Root Address")
                         .WithDescription("Will be used to automatically determine the base address and swagger address")
                         .WithExample("connect http://example.com/", b => b
@@ -50,7 +51,6 @@ namespace HttpSimpleRepl
 
                     .WithOption("base", p => p
                         .WithName("b")
-                        .WithIsRequired()
                         .WithTypeName("baseAddress")
                         .WithCaption("Base Address")
                         .WithDescription("Will be used to automatically determine the base address and swagger address")
@@ -60,7 +60,6 @@ namespace HttpSimpleRepl
 
                     .WithOption("swagger", p => p
                         .WithName("s")
-                        .WithIsRequired()
                         .WithTypeName("swaggerAddress")
                         .WithCaption("Swagger Address")
                         .WithDescription("Will be used to automatically determine the base address and swagger address")
@@ -78,6 +77,11 @@ namespace HttpSimpleRepl
             var engine = new ReplEngine(replRuntime);
 
             return engine;
+        }
+
+        private static async Task ExecuteConnect(Dictionary<string, object> arg)
+        {
+            ConsoleEx.WriteLine(ConsoleColor.Green, "Connect executed!!!");
         }
     }
 }

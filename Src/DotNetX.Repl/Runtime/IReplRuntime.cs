@@ -4,13 +4,12 @@ namespace DotNetX.Repl.Runtime
 {
     public interface IReplRuntime
     {
-        object CreateEmptyState();
-        
-        Task<string> GetPrompt(object state);
-        void PrintVersion(object state);
-        void PrintInformation(object state);
-        void PrintHelp(object state);
-        void PrintCommandHelp(object state, string command);
-        void PrintOptionHelp(object state, string command, string option);
+        Task<string> Prompt { get; }
+        void PrintVersion();
+        void PrintInformation();
+        void PrintHelp();
+        void PrintCommandHelp(string command);
+        void PrintOptionHelp(string command, string option);
+        Task ExecuteAsync(string line);
     }
 }

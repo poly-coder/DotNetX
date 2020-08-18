@@ -12,7 +12,7 @@ namespace DotNetX.Repl
         private static readonly Regex ExitCommandRegex = new Regex(@"^\s*(exit|x)\s*$", RegexOptions.IgnoreCase);
         private static readonly Regex VersionCommandRegex = new Regex(@"^\s*(ver(sion)?)\s*$", RegexOptions.IgnoreCase);
         private static readonly Regex InformationCommandRegex = new Regex(@"^\s*(info(rmation)?)\s*$", RegexOptions.IgnoreCase);
-        private static readonly Regex HelpCommandRegex = new Regex(@"^\s*((h(elp)?\s+|\?\s*)((?<command>\w+)(\s+(?<option>\w+))?)?)\s*$", RegexOptions.IgnoreCase | RegexOptions.ExplicitCapture);
+        private static readonly Regex HelpCommandRegex = new Regex(@"^\s*(h(elp)?|((h(elp)?\s+|\?\s*)((?<command>\w+)(\s+(?<option>\w+))?)?))\s*$", RegexOptions.IgnoreCase | RegexOptions.ExplicitCapture);
 
         private readonly IReplRuntime runtime;
         private readonly ReplEngineOptions options;
@@ -26,8 +26,6 @@ namespace DotNetX.Repl
 
         public async Task StartAsync(IServiceProvider serviceProvider)
         {
-            this.state = runtime.CreateEmptyState();
-
             while (true)
             {
                 var line = await ReadLine();
@@ -39,13 +37,13 @@ namespace DotNetX.Repl
 
                 if (IsVersionCommand(line))
                 {
-                    runtime.PrintVersion(state);
+                    runtime.PrintVersion();
                     continue;
                 }
 
                 if (IsInformationCommand(line))
                 {
-                    runtime.PrintInformation(state);
+                    runtime.PrintInformation();
                     continue;
                 }
 
@@ -54,23 +52,29 @@ namespace DotNetX.Repl
                     break;
                 }
 
+                // TODO: Implement state storage
+
                 if (IsHelpCommand(line, out var command, out var option))
                 {
                     if (option != null)
                     {
-                        runtime.PrintOptionHelp(state, command, option);
+                        runtime.PrintOptionHelp(command, option);
                     }
                     else if (command != null)
                     {
-                        runtime.PrintCommandHelp(state, command);
+                        runtime.PrintCommandHelp(command);
                     }
                     else 
                     {
-                        runtime.PrintHelp(state);
+                        runtime.PrintHelp();
                     }
 
                     continue;
                 }
+
+                // TODO: Capture exceptions while executing a command
+
+                await runtime.ExecuteAsync(line);
             }
 
         }
@@ -82,7 +86,7 @@ namespace DotNetX.Repl
                 Console.WriteLine();
             }
 
-            ConsoleEx.Write(ConsoleColor.Cyan, await runtime.GetPrompt(state));
+            ConsoleEx.Write(ConsoleColor.Cyan, await runtime.Prompt);
 
             ConsoleEx.Write(ConsoleColor.White, " > ");
 
@@ -137,6 +141,9 @@ namespace DotNetX.Repl
 
     public class ReplEngineOptions
     {
-
+        // IReplParser
+        // IReplConsole
+        // IReplValueBinder
+        // ...
     }
 }

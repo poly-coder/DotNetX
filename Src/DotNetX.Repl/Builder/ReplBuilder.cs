@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Data;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
@@ -42,7 +43,8 @@ namespace DotNetX.Repl.Builder
 
         class ReplRuntime : IReplRuntime
         {
-            private static readonly Regex OptionsRegex = new Regex(@"(?<long>--\w+)|(?<short>-\w+)|(?<loose>[^'""\s\-][^'""\s]*)|""(?<quoted>(""""|[^""])+)""|'(?<squoted>(''|[^'])+)'");
+            private static readonly Regex CommandRegex = new Regex(@"^(?<command>\w+)(\s+|$)");
+            private static readonly Regex OptionsRegex = new Regex(@"^((""(?<dqvalue>(""""|[^""])*)"")|('(?<sqvalue>(''|[^'])*)')|(?<value>[^""'\s\-][^""'\s]*)|\-\-(?<loption>\w+)|\-(?<soption>\w+))(\s+|$)");
 
             public ReplRuntime(ReplBuilder builder)
             {
@@ -66,15 +68,19 @@ namespace DotNetX.Repl.Builder
                 return null;
             }
 
-            public async Task<string> GetPrompt(object state)
+            public Task<string> Prompt
             {
+                get
+                {
+                    return Task.FromResult("Hello World!");
+
+                }
                 // TODO: 
-                return "Hello World!";
             }
 
-            public void PrintHelp(object state)
+            public void PrintHelp()
             {
-                PrintInformation(state);
+                PrintInformation();
                 Console.WriteLine();
 
                 if (Commands.Any())
@@ -105,13 +111,13 @@ namespace DotNetX.Repl.Builder
                 }
             }
 
-            public void PrintCommandHelp(object state, string command)
+            public void PrintCommandHelp(string command)
             {
-                var commandRuntime = FindCommand(state, command);
+                var commandRuntime = FindCommand(command);
 
                 if (commandRuntime != null)
                 {
-                    commandRuntime.PrintHelp(state);
+                    commandRuntime.PrintHelp();
                 }
                 else
                 {
@@ -119,17 +125,17 @@ namespace DotNetX.Repl.Builder
                 }
             }
 
-            public void PrintOptionHelp(object state, string command, string option)
+            public void PrintOptionHelp(string command, string option)
             {
-                var commandRuntime = FindCommand(state, command);
+                var commandRuntime = FindCommand(command);
 
                 if (commandRuntime != null)
                 {
-                    var paramRuntime = FindCommandOption(state, commandRuntime, option);
+                    var paramRuntime = FindCommandOption(commandRuntime, option);
 
                     if (paramRuntime != null)
                     {
-                        paramRuntime.PrintHelp(state);
+                        paramRuntime.PrintHelp();
                     }
                     else
                     {
@@ -142,7 +148,7 @@ namespace DotNetX.Repl.Builder
                 }
             }
 
-            public void PrintInformation(object state)
+            public void PrintInformation()
             {
                 if (Caption.IsNotNullOrWhiteSpace())
                 {
@@ -157,9 +163,254 @@ namespace DotNetX.Repl.Builder
                 }
             }
 
-            public void PrintVersion(object state)
+            public void PrintVersion()
             {
                 Console.WriteLine(Version);
+            }
+
+            public async Task ExecuteAsync(string line)
+            {
+                var commandMatch = CommandRegex.Match(line);
+
+                if (!commandMatch.Success)
+                {
+                    PrintCommandNotAvailable(line);
+                    return;
+                }
+
+                var command = commandMatch.Groups["command"].Value;
+                var commandRuntime = FindCommand(command);
+
+                if (commandRuntime == null)
+                {
+                    PrintCommandNotAvailable(command);
+                    return;
+                }
+
+                if (commandRuntime.Execute == null)
+                {
+                    ConsoleEx.WriteLine(ConsoleColor.Red, "Command \"{0}\" is not implemented", commandRuntime.Names.First());
+                    return;
+                }
+
+                var position = commandMatch.Length;
+                var positionalIndex = 0;
+                var parameterValues = new Dictionary<string, object>(StringComparer.InvariantCultureIgnoreCase);
+                var optionParam = default(ReplParameterRuntime);
+                var optionValues = default(List<string>);
+
+                while (position < line.Length)
+                {
+                    var optionMatch = OptionsRegex.Match(line, position);
+
+                    if (!optionMatch.Success)
+                    {
+                        ConsoleEx.WriteLine(ConsoleColor.Red, "Could not parse the command: \"{0}\"", line);
+                        return;
+                    }
+
+                    var value =
+                        optionMatch.Groups["dqvalue"].Success
+                        ? optionMatch.Groups["dqvalue"].Value.Replace("\"\"", "\"")
+                        : optionMatch.Groups["sqvalue"].Success
+                        ? optionMatch.Groups["sqvalue"].Value.Replace("\'\'", "\'")
+                        : optionMatch.Groups["value"].Success
+                        ? optionMatch.Groups["value"].Value
+                        : null;
+
+                    var longOption =
+                        optionMatch.Groups["loption"].Success
+                        ? optionMatch.Groups["loption"].Value
+                        : null;
+
+                    var shortOptions =
+                        optionMatch.Groups["soption"].Success
+                        ? optionMatch.Groups["soption"].Value
+                        : null;
+
+                    // TODO: Start running the state machine
+
+                    /**
+                     * Default -(Value)-> Default
+                     *      Look for a positional param to fill
+                     * Default -(Flag)-> Default : 
+                     *      Look for a flag to enable
+                     * Default -(Option)-> Option : 
+                     *      Look for the option and initialize a list to start adding values
+                     * Option -(Value)-> Option : 
+                     *      Add the value to the options list. If the option have more pending values keep current Option state
+                     * Option -(Value)-> Default : 
+                     *      Add the value to the options list. If the option have no more pending values go to Default state
+                     * Option -(*)-> Error
+                     */
+
+                    if (optionParam == null)
+                    {
+                        // Default State
+                        if (value != null)
+                        {
+                            // It is a positional parameter value
+
+                            if (positionalIndex >= commandRuntime.PositionalParameters.Count)
+                            {
+                                ConsoleEx.WriteLine(ConsoleColor.Red, "A unexpected value was found \"{0}\" but no positional option is available to get it. Type help {1} to check the expected parameters.", value, command);
+                                return;
+                            }
+
+                            var param = commandRuntime.PositionalParameters[positionalIndex];
+
+                            if (!parameterValues.TryGetValue(param.Names.First(), out var paramValue))
+                            {
+                                if (param.IsRepeated)
+                                {
+                                    paramValue = new List<string>();
+                                }
+                                else
+                                {
+                                    paramValue = value;
+                                }
+                            }
+
+                            if (param.IsRepeated)
+                            {
+                                ((List<string>)paramValue).Add(value);
+                            }
+
+                            foreach (var name in param.Names)
+                            {
+                                parameterValues[name] = paramValue;
+                            }
+
+                            if (!param.IsRepeated)
+                            {
+                                positionalIndex++;
+                            }
+                        }
+                        else if (shortOptions != null && shortOptions.Length > 1)
+                        {
+                            // It is a bunch of flags to turn on
+                            foreach (var character in shortOptions)
+                            {
+                                var name = character.ToString();
+
+                                var param = commandRuntime.Parameters.FirstOrDefault(p => p.Names.Contains(name, StringComparer.InvariantCultureIgnoreCase));
+
+                                if (param == null)
+                                {
+                                    ConsoleEx.WriteLine(ConsoleColor.Red, "Unknown flag \"{0}\" found in option \"-{1}\". Type help {2} to see available options.", name, shortOptions, command);
+                                    return;
+                                }
+
+                                if (param.ParameterType != ReplParameterType.Flag)
+                                {
+                                    ConsoleEx.WriteLine(ConsoleColor.Red, "Expected flag \"{0}\" but found an option or positional parameter in option \"-{1}\". Type help {2} to see available options.", name, shortOptions, command);
+                                    return;
+                                }
+
+                                if (parameterValues.ContainsKey(name))
+                                {
+                                    ConsoleEx.WriteLine(ConsoleColor.Red, "Flag \"{0}\" is repeated in option \"-{1}\". Type help {2} to see available options.", name, shortOptions, command);
+                                    return;
+                                }
+
+                                foreach (var pName in param.Names)
+                                {
+                                    parameterValues[pName] = true;
+                                }
+                            }
+                        }
+                        else
+                        {
+                            var name = shortOptions ?? longOption;
+
+                            var param = commandRuntime.Parameters.FirstOrDefault(p => p.Names.Contains(name, StringComparer.InvariantCultureIgnoreCase));
+
+                            if (param == null)
+                            {
+                                ConsoleEx.WriteLine(ConsoleColor.Red, "Unknown option \"{0}\" found", name);
+                                return;
+                            }
+
+                            if (param.ParameterType != ReplParameterType.Option)
+                            {
+                                ConsoleEx.WriteLine(ConsoleColor.Red, "Expected option \"{0}\" but found a flag or positional parameter", name);
+                                return;
+                            }
+
+                            if (!param.IsRepeated && parameterValues.ContainsKey(param.Names.First()))
+                            {
+                                ConsoleEx.WriteLine(ConsoleColor.Red, "Option \"{0}\" is repeated but it is expected to have a single value", name);
+                                return;
+                            }
+
+                            optionValues = new List<string>(); // Go to Option State
+                            optionParam = param;
+                        }
+                    }
+                    else
+                    {
+                        // Option State
+                        if (value == null)
+                        {
+                            ConsoleEx.WriteLine(ConsoleColor.Red, "While reading option \"{0}\" it followed a flag or another option, but a value was expected. Type help {1} to see available options.", optionParam.Names.First(), command);
+                            return;
+                        }
+
+                        optionValues.Add(value);
+
+                        if (optionValues.Count >= optionParam.ValueCount)
+                        {
+                            object paramValue;
+
+                            if (optionParam.IsRepeated && optionParam.ValueCount > 1)
+                            {
+                                if (!parameterValues.TryGetValue(optionParam.Names.First(), out paramValue))
+                                {
+                                    paramValue = new List<List<string>>();
+                                }
+                                ((List<List<string>>)paramValue).Add(optionValues);
+                            }
+                            else if (optionParam.IsRepeated)
+                            {
+                                if (!parameterValues.TryGetValue(optionParam.Names.First(), out paramValue))
+                                {
+                                    paramValue = new List<string>();
+                                }
+                                ((List<string>)paramValue).Add(optionValues[0]);
+                            }
+                            else if (optionParam.ValueCount > 1)
+                            {
+                                paramValue = optionValues;
+                            }
+                            else
+                            {
+                                paramValue = optionValues[0];
+                            }
+
+                            foreach (var pName in optionParam.Names)
+                            {
+                                parameterValues[pName] = paramValue;
+                            }
+
+                            optionParam = null;
+                            optionValues = null;
+                        }
+                    }
+
+                    position += optionMatch.Length;
+                }
+
+                // Check for missing options or positional parameters
+
+                var missingOptions = commandRuntime.Parameters.Where(p => p.IsRequired && !parameterValues.ContainsKey(p.Names.First())).ToArray();
+
+                if (missingOptions.Length > 0)
+                {
+                    ConsoleEx.WriteLine(ConsoleColor.Red, "The following options are required: \"{0}\"", String.Join(", ", missingOptions.Select(p => p.Names.First())));
+                    return;
+                }
+
+                await commandRuntime.Execute(parameterValues);
             }
 
             private static void PrintCommandNotAvailable(string command)
@@ -182,12 +433,12 @@ namespace DotNetX.Repl.Builder
                 ConsoleEx.Write(ConsoleColor.Gray, " to check the list of available options.");
             }
 
-            private ReplCommandRuntime FindCommand(object state, string command)
+            private ReplCommandRuntime FindCommand(string command)
             {
                 return Commands.FirstOrDefault(c => c.Names.Contains(command, StringComparer.InvariantCultureIgnoreCase));
             }
 
-            private ReplParameterRuntime FindCommandOption(object state, ReplCommandRuntime command, string option)
+            private ReplParameterRuntime FindCommandOption(ReplCommandRuntime command, string option)
             {
                 return command.Parameters.FirstOrDefault(c => c.Names.Contains(option, StringComparer.InvariantCultureIgnoreCase));
             }
@@ -204,6 +455,8 @@ namespace DotNetX.Repl.Builder
                 // TODO: Check parameter ambiguities, only last positional can be repeated, required must be in order: true, true, false, false
                 this.Parameters = new ReadOnlyCollection<ReplParameterRuntime>(builder.Parameters.Select(e => new ReplParameterRuntime(e)).ToArray());
                 this.Examples = new ReadOnlyCollection<ReplExampleRuntime>(builder.examples.Select(e => new ReplExampleRuntime(e)).ToArray());
+                this.PositionalParameters = new ReadOnlyCollection<ReplParameterRuntime>(this.Parameters.Where(p => p.ParameterType == ReplParameterType.Positional).ToArray());
+                this.Execute = builder.Execute;
             }
 
             public ReadOnlyCollection<string> Names { get; }
@@ -212,6 +465,8 @@ namespace DotNetX.Repl.Builder
             public string Description { get; }
             public ReadOnlyCollection<ReplParameterRuntime> Parameters { get; }
             public ReadOnlyCollection<ReplExampleRuntime> Examples { get; }
+            public ReadOnlyCollection<ReplParameterRuntime> PositionalParameters { get; }
+            public Func<Dictionary<string, object>, Task> Execute { get; }
 
             public string AllNames => string.Join("|", Names);
 
@@ -222,7 +477,7 @@ namespace DotNetX.Repl.Builder
                 ConsoleEx.WriteLine(ConsoleColor.Gray, Caption ?? "");
             }
 
-            public void PrintHelp(object state)
+            public void PrintHelp()
             {
                 // TODO: HelpFlags with ShowExamples, FullHelp, etc.
                 ConsoleEx.Write(ConsoleColor.White, "{0,-20}\t", AllNames);
@@ -275,7 +530,7 @@ namespace DotNetX.Repl.Builder
 
                     foreach (var param in Parameters)
                     {
-                        param.PrintSummary(state, "    ");
+                        param.PrintSummary("    ");
                     }
                     
                     Console.WriteLine();
@@ -348,15 +603,15 @@ namespace DotNetX.Repl.Builder
                 ? string.Join("|", Names)
                 : string.Join("|", Names.Select(n => AsOptionName(n)));
 
-            public void PrintSummary(object state, string indent)
+            public void PrintSummary(string indent)
             {
                 ConsoleEx.Write(ConsoleColor.White, "{0}{1,-20}\t", indent, AllNames);
                 ConsoleEx.WriteLine(ConsoleColor.Gray, Caption ?? "");
             }
 
-            public void PrintHelp(object state)
+            public void PrintHelp()
             {
-                PrintSummary(state, "");
+                PrintSummary("");
                 Console.WriteLine();
 
                 if (Description.IsNotNullOrWhiteSpace())
