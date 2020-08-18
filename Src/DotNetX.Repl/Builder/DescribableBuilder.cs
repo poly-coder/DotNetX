@@ -3,12 +3,26 @@ using System.Collections.Generic;
 
 namespace DotNetX.Repl.Builder
 {
-    public abstract class DescribableBuilder<TBuilder>
+    public interface IDescribableBuilder
+    {
+        string Caption { get; }
+        string Description { get; }
+        IEnumerable<ReplExampleBuilder> Examples { get; }
+    }
+
+    public abstract class DescribableBuilder<TBuilder> :
+        IDescribableBuilder
         where TBuilder: DescribableBuilder<TBuilder>
     {
         internal string caption;
         internal string description;
         internal List<ReplExampleBuilder> examples = new List<ReplExampleBuilder>();
+
+        public string Caption => caption;
+
+        public string Description => description;
+
+        public IEnumerable<ReplExampleBuilder> Examples => examples;
 
         public TBuilder WithCaption(string caption)
         {

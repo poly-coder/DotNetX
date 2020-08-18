@@ -3,11 +3,31 @@
     public class ReplCommandPositionalParameterBuilder :
         ReplCommandParameterBuilder<ReplCommandPositionalParameterBuilder>
     {
-        internal bool rest;
+        internal string typeName;
+        internal bool isRequired;
+        internal bool isRepeated;
 
-        public ReplCommandPositionalParameterBuilder WithRest()
+        public string TypeName => typeName;
+
+        public bool IsRequired => isRequired;
+
+        public bool IsRepeated => isRepeated;
+
+        public ReplCommandPositionalParameterBuilder WithTypeName(string typeName)
         {
-            this.rest = true;
+            this.typeName = typeName;
+            return this;
+        }
+
+        public ReplCommandPositionalParameterBuilder WithIsRequired()
+        {
+            this.isRequired = true;
+            return this;
+        }
+
+        public ReplCommandPositionalParameterBuilder WithIsRepeated()
+        {
+            this.isRepeated = true;
             return this;
         }
     }

@@ -1,5 +1,7 @@
-﻿using DotNetX.Repl.Runtime;
+﻿using DotNetX;
+using DotNetX.Repl.Runtime;
 using System;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace DotNetX.Repl
@@ -7,8 +9,14 @@ namespace DotNetX.Repl
     // TODO: Abstract the Host console
     public class ReplEngine
     {
+        private static readonly Regex ExitCommandRegex = new Regex(@"^\s*(exit|x)\s*$", RegexOptions.IgnoreCase);
+        private static readonly Regex VersionCommandRegex = new Regex(@"^\s*(ver(sion)?)\s*$", RegexOptions.IgnoreCase);
+        private static readonly Regex InformationCommandRegex = new Regex(@"^\s*(info(rmation)?)\s*$", RegexOptions.IgnoreCase);
+        private static readonly Regex HelpCommandRegex = new Regex(@"^\s*((h(elp)?\s+|\?\s*)((?<command>\w+)(\s+(?<option>\w+))?)?)\s*$", RegexOptions.IgnoreCase | RegexOptions.ExplicitCapture);
+
         private readonly IReplRuntime runtime;
         private readonly ReplEngineOptions options;
+        private object state;
 
         public ReplEngine(IReplRuntime runtime, ReplEngineOptions options = null)
         {
@@ -18,27 +26,112 @@ namespace DotNetX.Repl
 
         public async Task StartAsync(IServiceProvider serviceProvider)
         {
-            var state = runtime.CreateEmptyState();
+            this.state = runtime.CreateEmptyState();
 
             while (true)
             {
-                var line = ReadLine();
+                var line = await ReadLine();
 
+                if (line.IsNullOrWhiteSpace())
+                {
+                    continue;
+                }
 
+                if (IsVersionCommand(line))
+                {
+                    runtime.PrintVersion(state);
+                    continue;
+                }
+
+                if (IsInformationCommand(line))
+                {
+                    runtime.PrintInformation(state);
+                    continue;
+                }
+
+                if (IsExitCommand(line))
+                {
+                    break;
+                }
+
+                if (IsHelpCommand(line, out var command, out var option))
+                {
+                    if (option != null)
+                    {
+                        runtime.PrintOptionHelp(state, command, option);
+                    }
+                    else if (command != null)
+                    {
+                        runtime.PrintCommandHelp(state, command);
+                    }
+                    else 
+                    {
+                        runtime.PrintHelp(state);
+                    }
+
+                    continue;
+                }
             }
 
         }
 
-
         private async Task<string> ReadLine()
         {
-            ConsoleEx.Write(ConsoleColor.Cyan, await runtime.GetPrompt());
+            if (Console.CursorLeft > 0)
+            {
+                Console.WriteLine();
+            }
+
+            ConsoleEx.Write(ConsoleColor.Cyan, await runtime.GetPrompt(state));
 
             ConsoleEx.Write(ConsoleColor.White, " > ");
 
             var line = Console.ReadLine();
 
             return line;
+        }
+
+        private bool IsExitCommand(string line)
+        {
+            return ExitCommandRegex.IsMatch(line);
+        }
+
+        private bool IsVersionCommand(string line)
+        {
+            return VersionCommandRegex.IsMatch(line);
+        }
+
+        private bool IsInformationCommand(string line)
+        {
+            return InformationCommandRegex.IsMatch(line);
+        }
+
+        private bool IsHelpCommand(string line, out string command, out string option)
+        {
+            var match = HelpCommandRegex.Match(line);
+            command = null;
+            option = null;
+
+            if (match.Success)
+            {
+                var commandGroup = match.Groups["command"];
+
+                if (commandGroup.Success)
+                {
+                    command = commandGroup.Value;
+                    
+                    var optionGroup = match.Groups["option"];
+                    
+                    if (optionGroup.Success)
+                    {
+                        option = optionGroup.Value;
+                    }
+                }
+
+                return true;
+            }
+
+            return false;
         }
     }
 
