@@ -178,6 +178,8 @@ namespace DotNetX.Repl.Builder
                     return;
                 }
 
+                line = line.Substring(commandMatch.Value.Length);
+
                 var command = commandMatch.Groups["command"].Value;
                 var commandRuntime = FindCommand(command);
 
@@ -193,21 +195,23 @@ namespace DotNetX.Repl.Builder
                     return;
                 }
 
-                var position = commandMatch.Length;
+                //var position = commandMatch.Length;
                 var positionalIndex = 0;
                 var parameterValues = new Dictionary<string, object>(StringComparer.InvariantCultureIgnoreCase);
                 var optionParam = default(ReplParameterRuntime);
                 var optionValues = default(List<string>);
 
-                while (position < line.Length)
+                while (line.Length > 0)
                 {
-                    var optionMatch = OptionsRegex.Match(line, position);
+                    var optionMatch = OptionsRegex.Match(line);
 
                     if (!optionMatch.Success)
                     {
                         ConsoleEx.WriteLine(ConsoleColor.Red, "Could not parse the command: \"{0}\"", line);
                         return;
                     }
+
+                    line = line.Substring(optionMatch.Value.Length);
 
                     var value =
                         optionMatch.Groups["dqvalue"].Success
@@ -396,8 +400,6 @@ namespace DotNetX.Repl.Builder
                             optionValues = null;
                         }
                     }
-
-                    position += optionMatch.Length;
                 }
 
                 // Check for missing options or positional parameters

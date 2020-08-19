@@ -48,6 +48,14 @@ namespace HttpSimpleRepl
                         .WithExample("connect http://example.com/", b => b
                             .WithCaption("Connect to endpoint with default base address and no swagger specification file."))
                     ) // root
+                    
+                    .WithPositional("files", p => p
+                        .WithTypeName("fileList")
+                        .WithIsRepeated()
+                        .WithIsRequired()
+                        .WithCaption("Files")
+                        .WithDescription("List of files")
+                    ) // files
 
                     .WithOption("base", p => p
                         .WithName("b")
@@ -60,6 +68,8 @@ namespace HttpSimpleRepl
 
                     .WithOption("swagger", p => p
                         .WithName("s")
+                        .WithValueCount(2)
+                        .WithIsRepeated()
                         .WithTypeName("swaggerAddress")
                         .WithCaption("Swagger Address")
                         .WithDescription("Will be used to automatically determine the base address and swagger address")
@@ -79,9 +89,37 @@ namespace HttpSimpleRepl
             return engine;
         }
 
-        private static async Task ExecuteConnect(Dictionary<string, object> arg)
+        private static async Task ExecuteConnect(Dictionary<string, object> args)
         {
             ConsoleEx.WriteLine(ConsoleColor.Green, "Connect executed!!!");
+            foreach (var pair in args)
+            {
+                switch (pair.Value)
+                {
+                    case List<List<string>> data:
+                        ConsoleEx.WriteLine(ConsoleColor.White, "{0}: ", pair.Key);
+                        foreach (var items in data)
+                        {
+                            ConsoleEx.WriteLine(ConsoleColor.Gray, "  - {0}", string.Join(", ", items));
+                        }
+                        Console.WriteLine();
+                        break;
+
+                    case List<string> data:
+                        ConsoleEx.WriteLine(ConsoleColor.White, "{0}: ", pair.Key);
+                        foreach (var item in data)
+                        {
+                            ConsoleEx.WriteLine(ConsoleColor.Gray, "  - {0}", item);
+                        }
+                        Console.WriteLine();
+                        break;
+
+                    default:
+                        ConsoleEx.Write(ConsoleColor.White, "{0}: ", pair.Key);
+                        ConsoleEx.WriteLine(ConsoleColor.Gray, "{0}", pair.Value);
+                        break;
+                }
+            }
         }
     }
 }
