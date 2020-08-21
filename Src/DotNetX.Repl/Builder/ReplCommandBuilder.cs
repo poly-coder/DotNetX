@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace DotNetX.Repl.Builder
@@ -8,11 +9,11 @@ namespace DotNetX.Repl.Builder
     {
         internal string category;
         internal List<IReplCommandParameterBuilder> parameters = new List<IReplCommandParameterBuilder>();
-        private Func<Dictionary<string, object>, Task> execute;
+        private Func<Dictionary<string, object>, CancellationToken, Task> execute;
 
         public string Category => category;
         public IEnumerable<IReplCommandParameterBuilder> Parameters => parameters;
-        public Func<Dictionary<string, object>, Task> Execute => execute;
+        public Func<Dictionary<string, object>, CancellationToken, Task> Execute => execute;
 
         public ReplCommandBuilder WithFlag(string name, Action<ReplCommandFlagParameterBuilder>? config = null)
         {
@@ -44,10 +45,20 @@ namespace DotNetX.Repl.Builder
             return this;
         }
 
-        public ReplCommandBuilder WithExecute(Func<Dictionary<string, object>, Task> execute)
+        public ReplCommandBuilder WithExecute(Func<Dictionary<string, object>, CancellationToken, Task> execute)
         {
             this.execute = execute ?? throw new ArgumentNullException(nameof(execute));
             return this;
+        }
+
+        public ReplCommandBuilder WithExecute(Func<Dictionary<string, object>, Task> execute)
+        {
+            if (execute is null)
+            {
+                throw new ArgumentNullException(nameof(execute));
+            }
+
+            return WithExecute((dict, token) => execute(dict));
         }
     }
 }

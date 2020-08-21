@@ -1,11 +1,14 @@
-﻿using DotNetX.Repl.Runtime;
+﻿using DotNetX.Repl.Annotations;
+using DotNetX.Repl.Runtime;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Data;
+using Microsoft.Extensions.DependencyInjection;
 using System.Linq;
-using System.Security.Cryptography;
+using System.Reflection;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace DotNetX.Repl.Builder
@@ -15,11 +18,62 @@ namespace DotNetX.Repl.Builder
     {
         internal string version = "0.0";
         internal List<ReplCommandBuilder> commands = new List<ReplCommandBuilder>();
+        internal Func<CancellationToken, Task<string>> prompt;
+        internal Func<byte[]> persistState;
+        internal Action<byte[]> loadState;
 
         public ReplBuilder WithVersion(string version)
         {
-            this.version = version;
+            this.version = version ?? "0.0";
             return this;
+        }
+
+        public ReplBuilder WithStatePersistence(Func<byte[]> persistState, Action<byte[]> loadState)
+        {
+            if (persistState is null)
+            {
+                throw new ArgumentNullException(nameof(persistState));
+            }
+
+            if (loadState is null)
+            {
+                throw new ArgumentNullException(nameof(loadState));
+            }
+
+            this.persistState = persistState;
+            this.loadState = loadState;
+            return this;
+        }
+
+        public ReplBuilder WithPrompt(Func<CancellationToken, Task<string>> prompt)
+        {
+            if (prompt is null)
+            {
+                throw new ArgumentNullException(nameof(prompt));
+            }
+
+            this.prompt = prompt;
+            return this;
+        }
+
+        public ReplBuilder WithPrompt(Func<Task<string>> prompt)
+        {
+            if (prompt is null)
+            {
+                throw new ArgumentNullException(nameof(prompt));
+            }
+
+            return WithPrompt(_token => prompt());
+        }
+
+        public ReplBuilder WithPrompt(string prompt)
+        {
+            if (prompt is null)
+            {
+                throw new ArgumentNullException(nameof(prompt));
+            }
+
+            return WithPrompt(() => Task.FromResult(prompt));
         }
 
         public ReplBuilder WithCommand(string name, Action<ReplCommandBuilder> configCommand)
@@ -35,6 +89,355 @@ namespace DotNetX.Repl.Builder
             return new ReplRuntime(this);
         }
 
+        public static ReplBuilder FromInstance(IServiceProvider serviceProvider, IReplBase replInstance)
+        {
+            if (replInstance is null)
+            {
+                throw new ArgumentNullException(nameof(replInstance));
+            }
+
+            var replType = replInstance.GetType();
+
+            var builder = new ReplBuilder();
+
+            var controller = replType.GetCustomAttribute<ReplControllerAttribute>();
+            if (controller != null)
+            {
+                builder.WithCaption(controller.Caption)
+                    .WithVersion(controller.Version)
+                    .WithDescription(controller.Description);
+            }
+
+            builder.WithPrompt(() => replInstance.Prompt);
+
+            if (replInstance.CanPersistState)
+            {
+                builder.WithStatePersistence(
+                    () => replInstance.PersistState(),
+                    state => replInstance.LoadState(state));
+            }
+
+            foreach (var replExample in replType.GetCustomAttributes<ReplExampleAttribute>())
+            {
+                builder.WithExample(replExample.Command, exampleBuilder =>
+                {
+                    exampleBuilder
+                        .WithCaption(exampleBuilder.caption)
+                        .WithDescription(exampleBuilder.description);
+                });
+            }
+
+            foreach (var method in replType.GetMethods(BindingFlags.Public | BindingFlags.Instance))
+            {
+                var command = method.GetCustomAttribute<ReplCommandAttribute>();
+
+                if (command != null)
+                {
+                    builder.WithCommand(command.Name, commandBuilder =>
+                        BuildCommand(serviceProvider, replInstance, builder, method, command, commandBuilder));
+                }
+            }
+
+            return builder;
+        }
+
+        private static void BuildCommand(
+            IServiceProvider serviceProvider,
+            IReplBase replInstance,
+            ReplBuilder builder,
+            MethodInfo method,
+            ReplCommandAttribute command,
+            ReplCommandBuilder commandBuilder)
+        {
+            commandBuilder
+                .WithCaption(command.Caption)
+                .WithDescription(command.Description);
+
+            foreach (var namesAttr in method.GetCustomAttributes<ReplNamesAttribute>())
+            {
+                foreach (var name in namesAttr.Names)
+                {
+                    commandBuilder.WithName(name);
+                }
+            }
+
+            foreach (var replExample in method.GetCustomAttributes<ReplExampleAttribute>())
+            {
+                commandBuilder.WithExample(replExample.Command, exampleBuilder =>
+                {
+                    exampleBuilder
+                        .WithCaption(exampleBuilder.caption)
+                        .WithDescription(exampleBuilder.description);
+                });
+
+                if (replExample.Scope >= ReplExampleScope.Parent)
+                {
+                    builder.WithExample(replExample.Command, exampleBuilder =>
+                    {
+                        exampleBuilder
+                            .WithCaption(exampleBuilder.caption)
+                            .WithDescription(exampleBuilder.description);
+                    });
+                }
+            }
+
+            var parameters = method.GetParameters();
+
+            foreach (var parameter in parameters)
+            {
+                var replParam = parameter.GetCustomAttribute<ReplParamAttribute>();
+                var replOption = parameter.GetCustomAttribute<ReplOptionAttribute>();
+                var replFlag = parameter.GetCustomAttribute<ReplFlagAttribute>();
+                var fromServiceProvider = parameter.GetCustomAttribute<ReplServiceAttribute>() != null;
+
+                if (replParam != null)
+                {
+                    commandBuilder.WithPositional(parameter.Name, paramBuilder =>
+                    {
+                        BuildPositionalParameter(builder, commandBuilder, parameter, replParam, paramBuilder);
+                    });
+                }
+                else if (replOption != null)
+                {
+                    commandBuilder.WithOption(parameter.Name, paramBuilder =>
+                    {
+                        BuildOptionParameter(builder, commandBuilder, parameter, replOption, paramBuilder);
+                    });
+                }
+                else if (replFlag != null)
+                {
+                    commandBuilder.WithFlag(parameter.Name, paramBuilder =>
+                    {
+                        BuildFlagParameter(builder, commandBuilder, parameter, replFlag, paramBuilder);
+                    });
+                }
+                else
+                {
+                    if (!parameter.HasDefaultValue &&
+                        !fromServiceProvider &&
+                        parameter.ParameterType != typeof(CancellationToken) &&
+                        parameter.ParameterType != typeof(Dictionary<string, object>))
+                    {
+                        string message = $"Parameter {parameter.Name} from command {method.Name} cannot be fulfilled";
+                        ConsoleEx.WriteLine(ConsoleColor.Red, message);
+                        throw new InvalidOperationException(message);
+                    }
+                }
+            }
+
+            Task ExecuteAsync(Dictionary<string, object> values, CancellationToken cancellationToken)
+            {
+                var paramValues = new object[parameters.Length];
+
+                // TODO: Optimize
+                for (int i = 0; i < parameters.Length; i++)
+                {
+                    if (values.TryGetValue(parameters[i].Name, out var value))
+                    {
+                        // TODO: Bind depending on the param type
+                        paramValues[i] = value;
+                    }
+                    else if (parameters[i].GetCustomAttribute<ReplServiceAttribute>() != null)
+                    {
+                        if (parameters[i].HasDefaultValue) {
+                            paramValues[i] = serviceProvider.GetService(parameters[i].ParameterType);
+                        }
+                        else
+                        {
+                            paramValues[i] = serviceProvider.GetRequiredService(parameters[i].ParameterType);
+                        }
+                    }
+                    else if (parameters[i].ParameterType == typeof(CancellationToken))
+                    {
+                        paramValues[i] = cancellationToken;
+                    }
+                    else if (parameters[i].ParameterType == typeof(Dictionary<string, object>))
+                    {
+                        paramValues[i] = values;
+                    }
+                    else if (parameters[i].HasDefaultValue)
+                    {
+                        paramValues[i] = parameters[i].DefaultValue;
+                    }
+                    else
+                    {
+                        string message = $"Parameter {parameters[i].Name} from command {method.Name} cannot be bound";
+                        ConsoleEx.WriteLine(ConsoleColor.Red, message);
+                        throw new InvalidOperationException(message);
+                    }
+                }
+
+                var result = method.Invoke(replInstance, paramValues);
+
+                // TODO: Catch exceptions here or in the engine?
+
+                if (result is Task task && typeof(Task).IsAssignableFrom(method.ReturnType))
+                {
+                    return task;
+                }
+
+                return Task.CompletedTask;
+            }
+
+            commandBuilder.WithExecute(ExecuteAsync);
+        }
+
+        private static void BuildPositionalParameter(
+            ReplBuilder builder,
+            ReplCommandBuilder commandBuilder,
+            ParameterInfo parameter,
+            ReplParamAttribute replParam,
+            ReplCommandPositionalParameterBuilder paramBuilder)
+        {
+            paramBuilder
+                .WithTypeName(replParam.TypeName)
+                .WithCaption(replParam.Caption)
+                .WithDescription(replParam.Caption);
+
+            if (!parameter.HasDefaultValue)
+            {
+                paramBuilder.WithIsRequired();
+            }
+
+            if (parameter.ParameterType.IsGenericType &&
+                parameter.ParameterType.GetGenericTypeDefinition() == typeof(IEnumerable<string>).GetGenericTypeDefinition())
+            {
+                paramBuilder.WithIsRepeated();
+            }
+
+            foreach (var replExample in parameter.GetCustomAttributes<ReplExampleAttribute>())
+            {
+                paramBuilder.WithExample(replExample.Command, exampleBuilder =>
+                {
+                    exampleBuilder
+                        .WithCaption(exampleBuilder.caption)
+                        .WithDescription(exampleBuilder.description);
+                });
+
+                if (replExample.Scope >= ReplExampleScope.Parent)
+                {
+                    commandBuilder.WithExample(replExample.Command, exampleBuilder =>
+                    {
+                        exampleBuilder
+                            .WithCaption(exampleBuilder.caption)
+                            .WithDescription(exampleBuilder.description);
+                    });
+                }
+
+                if (replExample.Scope >= ReplExampleScope.All)
+                {
+                    builder.WithExample(replExample.Command, exampleBuilder =>
+                    {
+                        exampleBuilder
+                            .WithCaption(exampleBuilder.caption)
+                            .WithDescription(exampleBuilder.description);
+                    });
+                }
+            }
+        }
+
+        private static void BuildOptionParameter(
+            ReplBuilder builder,
+            ReplCommandBuilder commandBuilder,
+            ParameterInfo parameter,
+            ReplOptionAttribute replOption,
+            ReplCommandOptionParameterBuilder paramBuilder)
+        {
+            paramBuilder
+                .WithTypeName(replOption.TypeName)
+                .WithCaption(replOption.Caption)
+                .WithValueCount(replOption.ValueCount)
+                .WithDescription(replOption.Caption);
+
+            if (!parameter.HasDefaultValue)
+            {
+                paramBuilder.WithIsRequired();
+            }
+
+            if (parameter.ParameterType.IsGenericType &&
+                parameter.ParameterType.GetGenericTypeDefinition() == typeof(IEnumerable<string>).GetGenericTypeDefinition())
+            {
+                paramBuilder.WithIsRepeated();
+            }
+
+            foreach (var replExample in parameter.GetCustomAttributes<ReplExampleAttribute>())
+            {
+                paramBuilder.WithExample(replExample.Command, exampleBuilder =>
+                {
+                    exampleBuilder
+                        .WithCaption(exampleBuilder.caption)
+                        .WithDescription(exampleBuilder.description);
+                });
+
+                if (replExample.Scope >= ReplExampleScope.Parent)
+                {
+                    commandBuilder.WithExample(replExample.Command, exampleBuilder =>
+                    {
+                        exampleBuilder
+                            .WithCaption(exampleBuilder.caption)
+                            .WithDescription(exampleBuilder.description);
+                    });
+                }
+
+                if (replExample.Scope >= ReplExampleScope.All)
+                {
+                    builder.WithExample(replExample.Command, exampleBuilder =>
+                    {
+                        exampleBuilder
+                            .WithCaption(exampleBuilder.caption)
+                            .WithDescription(exampleBuilder.description);
+                    });
+                }
+            }
+        }
+
+        private static void BuildFlagParameter(
+            ReplBuilder builder,
+            ReplCommandBuilder commandBuilder,
+            ParameterInfo parameter,
+            ReplFlagAttribute replFlag,
+            ReplCommandFlagParameterBuilder paramBuilder)
+        {
+            if (parameter.ParameterType != typeof(bool))
+            {
+                ConsoleEx.WriteLine(ConsoleColor.Red, $"Flag `{commandBuilder.Names.First()} {AsOptionName(parameter.Name)}` cannot have a type other than `bool`, but found with type `{parameter.ParameterType.Name}`");
+            }
+
+            paramBuilder
+                .WithCaption(replFlag.Caption)
+                .WithDescription(replFlag.Caption);
+
+            foreach (var replExample in parameter.GetCustomAttributes<ReplExampleAttribute>())
+            {
+                paramBuilder.WithExample(replExample.Command, exampleBuilder =>
+                {
+                    exampleBuilder
+                        .WithCaption(exampleBuilder.caption)
+                        .WithDescription(exampleBuilder.description);
+                });
+
+                if (replExample.Scope >= ReplExampleScope.Parent)
+                {
+                    commandBuilder.WithExample(replExample.Command, exampleBuilder =>
+                    {
+                        exampleBuilder
+                            .WithCaption(exampleBuilder.caption)
+                            .WithDescription(exampleBuilder.description);
+                    });
+                }
+
+                if (replExample.Scope >= ReplExampleScope.All)
+                {
+                    builder.WithExample(replExample.Command, exampleBuilder =>
+                    {
+                        exampleBuilder
+                            .WithCaption(exampleBuilder.caption)
+                            .WithDescription(exampleBuilder.description);
+                    });
+                }
+            }
+        }
+
         private static string AsOptionName(string name)
         {
             var prefix = name.Length <= 0 ? "-" : "--";
@@ -43,14 +446,17 @@ namespace DotNetX.Repl.Builder
 
         class ReplRuntime : IReplRuntime
         {
-            private static readonly Regex CommandRegex = new Regex(@"^(?<command>\w+)(\s+|$)");
-            private static readonly Regex OptionsRegex = new Regex(@"^((""(?<dqvalue>(""""|[^""])*)"")|('(?<sqvalue>(''|[^'])*)')|(?<value>[^""'\s\-][^""'\s]*)|\-\-(?<loption>\w+)|\-(?<soption>\w+))(\s+|$)");
+            private static readonly Regex CommandRegex = new Regex(@"^(?<command>\w+(\-\w+)*)(\s+|$)");
+            private static readonly Regex OptionsRegex = new Regex(@"^((""(?<dqvalue>(""""|[^""])*)"")|('(?<sqvalue>(''|[^'])*)')|(?<value>[^""'\s\-][^""'\s]*)|\-\-(?<loption>\w+(\-\w+)*)|\-(?<soption>\w+))(\s+|$)");
 
             public ReplRuntime(ReplBuilder builder)
             {
                 this.Version = builder.version;
                 this.Caption = builder.caption;
                 this.Description = builder.description;
+                this.Prompt = builder.prompt ?? (_ => Task.FromResult(""));
+                this.PersistStateFunc = builder.persistState;
+                this.LoadStateFunc = builder.loadState;
                 this.Examples = new ReadOnlyCollection<ReplExampleRuntime>(builder.examples.Select(e => new ReplExampleRuntime(e)).ToArray());
                 // TODO: Check command ambiguity
                 this.Commands = new ReadOnlyCollection<ReplCommandRuntime>(builder.commands.Select(c => new ReplCommandRuntime(c)).ToArray());
@@ -59,23 +465,17 @@ namespace DotNetX.Repl.Builder
             public string Version { get; }
             public string Caption { get; }
             public string Description { get; }
+            public Func<CancellationToken, Task<string>> Prompt { get; }
+            public Func<byte[]> PersistStateFunc { get; }
+            public Action<byte[]> LoadStateFunc { get; }
             public ReadOnlyCollection<ReplExampleRuntime> Examples { get; }
             public ReadOnlyCollection<ReplCommandRuntime> Commands { get; }
 
-            public object CreateEmptyState()
-            {
-                // TODO: 
-                return null;
-            }
+            public bool CanPersistState => PersistStateFunc != null && LoadStateFunc != null;
 
-            public Task<string> Prompt
+            public Task<string> GetPrompt(CancellationToken cancellationToken)
             {
-                get
-                {
-                    return Task.FromResult("Hello World!");
-
-                }
-                // TODO: 
+                return Prompt(cancellationToken);
             }
 
             public void PrintHelp()
@@ -168,7 +568,7 @@ namespace DotNetX.Repl.Builder
                 Console.WriteLine(Version);
             }
 
-            public async Task ExecuteAsync(string line)
+            public async Task ExecuteAsync(string line, CancellationToken cancellationToken)
             {
                 var commandMatch = CommandRegex.Match(line);
 
@@ -412,7 +812,7 @@ namespace DotNetX.Repl.Builder
                     return;
                 }
 
-                await commandRuntime.Execute(parameterValues);
+                await commandRuntime.Execute(parameterValues, cancellationToken);
             }
 
             private static void PrintCommandNotAvailable(string command)
@@ -444,6 +844,26 @@ namespace DotNetX.Repl.Builder
             {
                 return command.Parameters.FirstOrDefault(c => c.Names.Contains(option, StringComparer.InvariantCultureIgnoreCase));
             }
+
+            public byte[] PersistState()
+            {
+                if (!CanPersistState)
+                {
+                    throw new NotImplementedException();
+                }
+
+                return PersistStateFunc();
+            }
+
+            public void LoadState(byte[] persistedState)
+            {
+                if (!CanPersistState)
+                {
+                    throw new NotImplementedException();
+                }
+
+                LoadStateFunc(persistedState);
+            }
         }
 
         class ReplCommandRuntime
@@ -468,14 +888,14 @@ namespace DotNetX.Repl.Builder
             public ReadOnlyCollection<ReplParameterRuntime> Parameters { get; }
             public ReadOnlyCollection<ReplExampleRuntime> Examples { get; }
             public ReadOnlyCollection<ReplParameterRuntime> PositionalParameters { get; }
-            public Func<Dictionary<string, object>, Task> Execute { get; }
+            public Func<Dictionary<string, object>, CancellationToken, Task> Execute { get; }
 
             public string AllNames => string.Join("|", Names);
 
             public void PrintSummary(string indent)
             {
                 ConsoleEx.Write(ConsoleColor.White, "{0}{1,-20}\t", indent, AllNames);
-                
+
                 ConsoleEx.WriteLine(ConsoleColor.Gray, Caption ?? "");
             }
 
@@ -534,7 +954,7 @@ namespace DotNetX.Repl.Builder
                     {
                         param.PrintSummary("    ");
                     }
-                    
+
                     Console.WriteLine();
                 }
 
@@ -571,7 +991,7 @@ namespace DotNetX.Repl.Builder
                     case ReplCommandFlagParameterBuilder flag:
                         this.ParameterType = ReplParameterType.Flag;
                         break;
-                    case ReplCommandOptionParameterBuilder  option:
+                    case ReplCommandOptionParameterBuilder option:
                         this.ParameterType = ReplParameterType.Option;
                         this.IsRequired = option.IsRequired;
                         this.TypeName = option.TypeName;
