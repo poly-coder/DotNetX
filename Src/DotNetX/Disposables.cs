@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace DotNetX
 {
@@ -23,7 +24,7 @@ namespace DotNetX
                 }
             }
 
-            this.disposables.AddRange(disposables);
+            this.disposables.AddRange(disposables.Where(d => !disposables.Contains(d)));
         }
 
         protected virtual void Dispose(bool disposing)
@@ -38,10 +39,16 @@ namespace DotNetX
                     }
 
                     disposables.Clear();
+
+                    OnDispose();
                 }
 
                 disposedValue = true;
             }
+        }
+
+        protected virtual void OnDispose()
+        {
         }
 
         public void Dispose()
