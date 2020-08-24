@@ -46,6 +46,7 @@ jobs:
     - name: Pack and Publish
       run: |
         dotnet pack --configuration Release --output . ./Src/DotNetX
-        dotnet nuget push *.nupkg --source https://api.nuget.org/v3/index.json --skip-duplicate --api-key ${{ secrets.NUGET_TOKEN }}
-        rm *.nupkg
+        dotnet pack --configuration Release --output . ./Src/DotNetX.Repl
+        dotnet nuget push "*.nupkg" --source https://api.nuget.org/v3/index.json --skip-duplicate --api-key ${{ secrets.NUGET_TOKEN }}
+        rm "*.nupkg"
         
