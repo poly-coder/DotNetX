@@ -120,6 +120,9 @@
   <data name="Error_EmptySignature" xml:space="preserve">
     <value>This method represents an empty signature. Do not use it to call!</value>
   </data>
+  <data name="Error_ExpectedPropertyExpression" xml:space="preserve">
+    <value>Expected a property expression.</value>
+  </data>
   <data name="Error_HexStringLengthMustBeEven" xml:space="preserve">
     <value>Hex string must contain an even number of hex digits</value>
   </data>

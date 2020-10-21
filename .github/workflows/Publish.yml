@@ -47,6 +47,8 @@ jobs:
       run: |
         dotnet pack --configuration Release --output . ./Src/DotNetX
         dotnet pack --configuration Release --output . ./Src/DotNetX.Repl
+        dotnet pack --configuration Release --output . ./Src/DotNetX.Extensions
         dotnet nuget push "*.nupkg" --source https://api.nuget.org/v3/index.json --skip-duplicate --api-key ${{ secrets.NUGET_TOKEN }}
         rm "*.nupkg"
+      continue-on-error: true
         

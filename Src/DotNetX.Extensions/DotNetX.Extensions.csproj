@@ -1,0 +1,26 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <RootNamespace>DotNetX</RootNamespace>
+    <PackageId>DotNetX.Extensions</PackageId>
+    <Version>0.0.1</Version>
+    <Authors>Iskander Sierra</Authors>
+    <Company>PolyCoder</Company>
+    <Product>PolyCoder CSharp Framework</Product>
+    <Description>Basic and common functionality to be used in DotNet Standard/Core projects with Microsoft.Extensions</Description>
+    <PackageProjectUrl>https://github.com/poly-coder/DotNetX</PackageProjectUrl>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <AssemblyName>DotNetX.Extensions</AssemblyName>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="3.1.7" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DotNetX\DotNetX.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -70,6 +70,15 @@ namespace DotNetX {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Expected a property expression..
+        /// </summary>
+        internal static string Error_ExpectedPropertyExpression {
+            get {
+                return ResourceManager.GetString("Error_ExpectedPropertyExpression", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Hex string must contain an even number of hex digits.
         /// </summary>
         internal static string Error_HexStringLengthMustBeEven {
