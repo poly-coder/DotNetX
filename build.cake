@@ -110,6 +110,6 @@ var pushTask = Task("Push")
 });
 
 Task("Default")
-    .IsDependentOn(packTask);
+    .IsDependentOn(pushTask);
 
 RunTarget(target);
