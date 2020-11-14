@@ -7,9 +7,9 @@ namespace DotNetX
     {
         public static bool True<T>(this T _) => true;
         public static bool False<T>(this T _) => false;
-        public static bool IsNull<T>(this T value) where T : class
+        public static bool IsNull<T>(this T? value) where T : class
             => value == null;
-        public static bool IsNonNull<T>(this T value) where T : class
+        public static bool IsNonNull<T>(this T? value) where T : class
             => value != null;
 
 

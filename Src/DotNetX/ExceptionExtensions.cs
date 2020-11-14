@@ -7,9 +7,10 @@ namespace DotNetX
     public static class ExceptionExtensions
     {
         private static Lazy<MethodInfo> preserveStackTraceMethod =
-            new Lazy<MethodInfo>(() => typeof(Exception).GetMethod(
-                "InternalPreserveStackTrace",
-                BindingFlags.Instance | BindingFlags.NonPublic));
+            new Lazy<MethodInfo>(() => 
+                typeof(Exception).GetMethod(
+                    "InternalPreserveStackTrace",
+                    BindingFlags.Instance | BindingFlags.NonPublic)!);
 
         public static void PreserveStackTrace(this Exception exn)
         {
@@ -46,7 +47,11 @@ namespace DotNetX
             {
                 return null;
             }
-            var type = Type.GetType(typeName);
+            var type = Type.GetType(typeName!);
+            if (type == null)
+            {
+                return null;
+            }
             return info.GetValue(name, type) as T;
         }
 

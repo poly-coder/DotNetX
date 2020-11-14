@@ -7,7 +7,7 @@ using System.Text;
 
 namespace DotNetX.Reflection
 {
-    public delegate object CallExtensibleMethod(object instance, IServiceProvider services, object[] requiredInputs, object[] optionalInputs);
+    public delegate object? CallExtensibleMethod(object instance, IServiceProvider services, object[]? requiredInputs, object[]? optionalInputs);
 
     public class ExtensibleMethodCaller : IExtensibleMethodCaller
     {
@@ -52,7 +52,7 @@ namespace DotNetX.Reflection
             return info;
         }
 
-        public object Call(object instance, IServiceProvider services, object[] requiredInputs, object[] optionalInputs)
+        public object? Call(object instance, IServiceProvider services, object[]? requiredInputs, object[]? optionalInputs)
         {
             if (instance is null)
             {
@@ -77,21 +77,22 @@ namespace DotNetX.Reflection
             return CallSpecific(instance, services, requiredInputs, optionalInputs);
         }
 
-        private object CallSpecific(object instance, IServiceProvider services, object[] requiredInputs, object[] optionalInputs)
+        private object? CallSpecific(object instance, IServiceProvider services, object[]? requiredInputs, object[]? optionalInputs)
         {
             var instanceType = instance.GetType();
 
             var instanceInfo = GetInfo(instanceType);
 
-            requiredInputs ??= Array.Empty<object>();
-            optionalInputs ??= Array.Empty<object>();
+            requiredInputs.OrDefault();
+            optionalInputs.OrDefault();
 
             if (instanceInfo.IsEmpty)
             {
                 return onNotFound(instance, services, requiredInputs, optionalInputs);
             }
 
-            (MethodInfo? method, object[]? parameters) = instanceInfo.GetMethodToCall(services, requiredInputs, optionalInputs);
+            (MethodInfo? method, object[]? parameters) = instanceInfo.GetMethodToCall(
+                services, requiredInputs.OrDefault(), optionalInputs.OrDefault());
 
             if (method == null || parameters == null)
             {
@@ -104,17 +105,24 @@ namespace DotNetX.Reflection
             }
             catch (TargetInvocationException ex)
             {
-                throw ex.InnerException;
+                if (ex.InnerException != null)
+                {
+                    throw ex.InnerException;
+                }
+                else
+                {
+                    throw;
+                }
             }
         }
 
-        private object DefaultOnNotFound(object instance, IServiceProvider services, object[] requiredInputs, object[] optionalInputs)
+        private object? DefaultOnNotFound(object instance, IServiceProvider services, object[]? requiredInputs, object[]? optionalInputs)
         {
             throw new NotImplementedException(
-                $"Method caller {Name} did not found a method for type {instance.GetType().FullName} {FormatInputTypes(requiredInputs, "required")} and {FormatInputTypes(optionalInputs, "optional")}");
+                $"Method caller {Name} did not found a method for type {instance.GetType().FullName} {FormatInputTypes(requiredInputs.OrDefault(), "required")} and {FormatInputTypes(optionalInputs.OrDefault(), "optional")}");
         }
 
-        private static bool HaveNullInputs(object[] inputs)
+        private static bool HaveNullInputs(object[]? inputs)
         {
             if (inputs == null || inputs.Length == 0)
             {
@@ -263,7 +271,7 @@ namespace DotNetX.Reflection
                 OptionalInputTypes = optionalInputTypes ?? throw new ArgumentNullException(nameof(optionalInputTypes));
             }
 
-            public override bool Equals(object obj)
+            public override bool Equals(object? obj)
             {
                 return Equals(obj as InputParameterTypesKey);
             }
@@ -332,7 +340,7 @@ namespace DotNetX.Reflection
                     switch (parameter.ParameterSource)
                     {
                         case InputParameterPositionType.Provided:
-                            parameters[i] = services.GetService(parameter.ServiceType);
+                            parameters[i] = services.GetService(parameter.ServiceType!)!;
                             break;
                         case InputParameterPositionType.Required:
                             parameters[i] = requiredInputs[parameter.Index];
@@ -384,10 +392,10 @@ namespace DotNetX.Reflection
 
         public ExtensibleMethodCaller(
             ExtensibleMethodCaller innerCaller,
-            Func<object, TResult>? toResult = null)
+            Func<object?, TResult>? toResult = null)
         {
             this.innerCaller = innerCaller ?? throw new ArgumentNullException(nameof(innerCaller));
-            this.toResult = toResult ?? (obj => (TResult)obj);
+            this.toResult = toResult ?? (obj => (TResult)obj!);
         }
 
         public ExtensibleMethodCaller.SpecificTypeInfo GetInfo(Type type)
@@ -395,7 +403,7 @@ namespace DotNetX.Reflection
             return innerCaller.GetInfo(type);
         }
 
-        public TResult Call(T instance, IServiceProvider services, object[] requiredInputs, object[] optionalInputs)
+        public TResult Call(T instance, IServiceProvider services, object[]? requiredInputs, object[]? optionalInputs)
         {
             if (instance is null)
             {

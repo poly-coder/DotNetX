@@ -50,7 +50,7 @@ namespace DotNetX.Reflection
 
             if (type.IsArray)
             {
-                var elementType = type.GetElementType().FormatName(fullName);
+                var elementType = type.GetElementType()!.FormatName(fullName);
                 var rank = type.GetArrayRank();
                 var commas = new String(',', rank - 1);
                 return $"{elementType}[{commas}]";
@@ -58,7 +58,7 @@ namespace DotNetX.Reflection
 
             if (typeof(Delegate).IsAssignableFrom(type))
             {
-                var method = type.GetMethod("Invoke");
+                var method = type.GetMethod("Invoke")!;
                 return method.FormatSignature(type.Name, fullName);
             }
 
@@ -80,7 +80,7 @@ namespace DotNetX.Reflection
 
                 return builder.ToString();
             }
-            return typeName;
+            return typeName!;
         }
 
         public static string FormatSignature(this MethodInfo method, string? methodName = null, bool fullName = false)
@@ -90,7 +90,7 @@ namespace DotNetX.Reflection
                 throw new ArgumentNullException(nameof(method));
             }
 
-            methodName ??= fullName ? $"{method.DeclaringType.FormatName(true)}.{method.Name}" : method.Name;
+            methodName ??= fullName ? $"{method.DeclaringType!.FormatName(true)}.{method.Name}" : method.Name;
             var sb = new StringBuilder();
             sb.Append(method.ReturnType.FormatName(fullName)).Append(" ").Append(methodName).Append("(");
             var parameters = method.GetParameters();
@@ -162,7 +162,7 @@ namespace DotNetX.Reflection
             return provider.GetAttributes(typeof(TAttribute), inherit).Cast<TAttribute>();
         }
 
-        public static Attribute GetAttribute(this ICustomAttributeProvider provider, Type attributeType, bool inherit)
+        public static Attribute? GetAttribute(this ICustomAttributeProvider provider, Type attributeType, bool inherit)
         {
             if (provider is null)
             {
@@ -177,7 +177,7 @@ namespace DotNetX.Reflection
             return provider.GetAttributes(attributeType, inherit).FirstOrDefault();
         }
 
-        public static TAttribute GetAttribute<TAttribute>(this ICustomAttributeProvider provider, bool inherit)
+        public static TAttribute? GetAttribute<TAttribute>(this ICustomAttributeProvider provider, bool inherit)
             where TAttribute : Attribute
         {
             if (provider is null)

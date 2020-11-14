@@ -15,7 +15,7 @@ namespace DotNetX
             yield return value;
         }
 
-        public static IEnumerable<T> SingletonIf<T>(this T value, Func<T, bool> predicate)
+        public static IEnumerable<T> SingletonIf<T>(this T value, Func<T, bool> predicate) 
         {
             if (predicate is null)
             {
@@ -26,8 +26,12 @@ namespace DotNetX
                 yield return value;
         }
 
-        public static IEnumerable<T> SingletonNonNull<T>(this T value) where T : class
-            => value.SingletonIf(Predicate.IsNonNull);
+        public static IEnumerable<T> SingletonNonNull<T>(this T? value) 
+            where T : class
+        {
+            if (value != null)
+                yield return value!;
+        }
 
         #endregion [ Singleton ]
 
@@ -78,6 +82,20 @@ namespace DotNetX
         }
 
         #endregion [ StartWith ]
+
+
+        #region [ OrDefault ]
+
+        public static IEqualityComparer<T> OrDefault<T>(this IEqualityComparer<T>? comparer) =>
+            comparer ?? EqualityComparer<T>.Default;
+
+        public static IComparer<T> OrDefault<T>(this IComparer<T>? comparer) =>
+            comparer ?? Comparer<T>.Default;
+
+        public static T[] OrDefault<T>(this T[]? array) =>
+            array ?? Array.Empty<T>();
+
+        #endregion [ OrDefault ]
 
 
         #region [ IndexOf / LastIndexOf ]
@@ -159,8 +177,7 @@ namespace DotNetX
 
             if (source1.Count != source2!.Count) return false;
 
-            comparer = comparer ?? EqualityComparer<T>.Default;
-            return AreEqualEnumerables(source1, source2, comparer);
+            return AreEqualEnumerables(source1, source2, comparer.OrDefault());
         }
 
         public static bool IsEqualTo<T>(this IReadOnlyList<T>? source1, IReadOnlyList<T>? source2, IEqualityComparer<T>? comparer = null)
@@ -176,7 +193,7 @@ namespace DotNetX
             if (source1.Count != source2!.Count) return false;
 
             var count = source1.Count;
-            comparer = comparer ?? EqualityComparer<T>.Default;
+            comparer = comparer.OrDefault();
             for (int i = 0; i < count; i++)
             {
                 if (!comparer.Equals(source1[i], source2[i])) return false;
@@ -224,7 +241,7 @@ namespace DotNetX
                 return array.GetCollectionHashCode(comparer);
             }
 
-            return ComputeEnumerableHashCode(source, comparer ?? EqualityComparer<T>.Default);
+            return ComputeEnumerableHashCode(source, comparer.OrDefault());
         }
 
         public static int GetCollectionHashCode<T>(this IReadOnlyCollection<T>? source, IEqualityComparer<T>? comparer = null)
@@ -236,7 +253,7 @@ namespace DotNetX
                 return array.GetCollectionHashCode(comparer);
             }
 
-            return ComputeEnumerableHashCode(source, comparer ?? EqualityComparer<T>.Default);
+            return ComputeEnumerableHashCode(source, comparer.OrDefault());
         }
 
         public static int GetCollectionHashCode<T>(this IReadOnlyList<T>? source, IEqualityComparer<T>? comparer = null)
@@ -536,20 +553,23 @@ namespace DotNetX
 
         #region [ ToDictionary ]
 
-        public static Dictionary<TKey, TValue> ToDictionary<TKey, TValue>(this IEnumerable<KeyValuePair<TKey, TValue>> source, IEqualityComparer<TKey>? comparer = null)
-        {
-            return new Dictionary<TKey, TValue>(source, comparer ?? EqualityComparer<TKey>.Default);
-        }
+        public static Dictionary<TKey, TValue> ToDictionary<TKey, TValue>(
+            this IEnumerable<KeyValuePair<TKey, TValue>> source,
+            IEqualityComparer<TKey>? comparer = null) 
+            where TKey: notnull =>
+            new Dictionary<TKey, TValue>(source, comparer.OrDefault());
 
-        public static Dictionary<TKey, TValue> ToDictionary<TKey, TValue>(this IEnumerable<Tuple<TKey, TValue>> source, IEqualityComparer<TKey>? comparer = null)
-        {
-            return source.ToDictionary(t => t.Item1, t => t.Item2, comparer ?? EqualityComparer<TKey>.Default);
-        }
+        public static Dictionary<TKey, TValue> ToDictionary<TKey, TValue>(
+            this IEnumerable<Tuple<TKey, TValue>> source,
+            IEqualityComparer<TKey>? comparer = null)
+            where TKey : notnull =>
+            source.ToDictionary(t => t.Item1, t => t.Item2, comparer.OrDefault());
 
-        public static Dictionary<TKey, TValue> ToDictionary<TKey, TValue>(this IEnumerable<ValueTuple<TKey, TValue>> source, IEqualityComparer<TKey>? comparer = null)
-        {
-            return source.ToDictionary(t => t.Item1, t => t.Item2, comparer ?? EqualityComparer<TKey>.Default);
-        }
+        public static Dictionary<TKey, TValue> ToDictionary<TKey, TValue>(
+            this IEnumerable<ValueTuple<TKey, TValue>> source,
+            IEqualityComparer<TKey>? comparer = null) 
+            where TKey : notnull =>
+            source.ToDictionary(t => t.Item1, t => t.Item2, comparer.OrDefault());
 
         #endregion [ ToDictionary ]
 
@@ -584,14 +604,14 @@ namespace DotNetX
 
         public StructuralEnumerableEqualityComparer(IEqualityComparer<T>? itemComparer = null)
         {
-            this.itemComparer = itemComparer ?? EqualityComparer<T>.Default;
+            this.itemComparer = itemComparer.OrDefault();
         }
 
-        public bool Equals(IEnumerable<T> x, IEnumerable<T> y) => x.IsEqualTo(y, itemComparer);
+        public bool Equals(IEnumerable<T>? x, IEnumerable<T>? y) => x.IsEqualTo(y, itemComparer);
 
         public int GetHashCode(IEnumerable<T> obj) => obj.GetCollectionHashCode(itemComparer);
 
-        bool IEqualityComparer.Equals(object x, object y) => Equals((IEnumerable<T>)x, (IEnumerable<T>)y);
+        bool IEqualityComparer.Equals(object? x, object? y) => Equals(x as IEnumerable<T>, y as IEnumerable<T>);
 
         int IEqualityComparer.GetHashCode(object obj) => GetHashCode((IEnumerable<T>)obj);
     }
@@ -603,14 +623,14 @@ namespace DotNetX
 
         public StructuralReadOnlyCollectionEqualityComparer(IEqualityComparer<T>? itemComparer = null)
         {
-            this.itemComparer = itemComparer ?? EqualityComparer<T>.Default;
+            this.itemComparer = itemComparer.OrDefault();
         }
 
-        public bool Equals(IReadOnlyCollection<T> x, IReadOnlyCollection<T> y) => x.IsEqualTo(y, itemComparer);
+        public bool Equals(IReadOnlyCollection<T>? x, IReadOnlyCollection<T>? y) => x.IsEqualTo(y, itemComparer);
 
         public int GetHashCode(IReadOnlyCollection<T> obj) => obj.GetCollectionHashCode(itemComparer);
 
-        bool IEqualityComparer.Equals(object x, object y) => Equals((IReadOnlyCollection<T>)x, (IReadOnlyCollection<T>)y);
+        bool IEqualityComparer.Equals(object? x, object? y) => Equals(x as IReadOnlyCollection<T>, y as IReadOnlyCollection<T>);
 
         int IEqualityComparer.GetHashCode(object obj) => GetHashCode((IReadOnlyCollection<T>)obj);
     }
@@ -622,14 +642,14 @@ namespace DotNetX
 
         public StructuralReadOnlyListEqualityComparer(IEqualityComparer<T>? itemComparer = null)
         {
-            this.itemComparer = itemComparer ?? EqualityComparer<T>.Default;
+            this.itemComparer = itemComparer.OrDefault();
         }
 
-        public bool Equals(IReadOnlyList<T> x, IReadOnlyList<T> y) => x.IsEqualTo(y, itemComparer);
+        public bool Equals(IReadOnlyList<T>? x, IReadOnlyList<T>? y) => x.IsEqualTo(y, itemComparer);
 
         public int GetHashCode(IReadOnlyList<T> obj) => obj.GetCollectionHashCode(itemComparer);
 
-        bool IEqualityComparer.Equals(object x, object y) => Equals((IReadOnlyList<T>)x, (IReadOnlyList<T>)y);
+        bool IEqualityComparer.Equals(object? x, object? y) => Equals(x as IReadOnlyList<T>, y as IReadOnlyList<T>);
 
         int IEqualityComparer.GetHashCode(object obj) => GetHashCode((IReadOnlyList<T>)obj);
     }
@@ -641,14 +661,14 @@ namespace DotNetX
 
         public StructuralArrayEqualityComparer(IEqualityComparer<T>? itemComparer = null)
         {
-            this.itemComparer = itemComparer ?? EqualityComparer<T>.Default;
+            this.itemComparer = itemComparer.OrDefault();
         }
 
-        public bool Equals(T[] x, T[] y) => x.IsEqualTo(y, itemComparer);
+        public bool Equals(T[]? x, T[]? y) => x.IsEqualTo(y, itemComparer);
 
         public int GetHashCode(T[] obj) => obj.GetCollectionHashCode(itemComparer);
 
-        bool IEqualityComparer.Equals(object x, object y) => Equals((T[])x, (T[])y);
+        bool IEqualityComparer.Equals(object? x, object? y) => Equals(x as T[], y as T[]);
 
         int IEqualityComparer.GetHashCode(object obj) => GetHashCode((T[])obj);
     }

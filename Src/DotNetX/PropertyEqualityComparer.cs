@@ -12,7 +12,7 @@ namespace DotNetX
         public PropertyEqualityComparer(Func<T, P> getProperty, IEqualityComparer<P>? propertyComparer = null)
         {
             this.getProperty = getProperty ?? throw new ArgumentNullException(nameof(getProperty));
-            this.propertyComparer = propertyComparer ?? EqualityComparer<P>.Default;
+            this.propertyComparer = propertyComparer.OrDefault();
         }
 
         public bool Equals(T x, T y) =>
@@ -30,9 +30,9 @@ namespace DotNetX
 
     public static class PropertyEqualityComparer
     {
-        public static PropertyEqualityComparer<T, P> Create<T, P>(Func<T, P> getProperty, IEqualityComparer<P>? propertyComparer = null)
-        {
-            return new PropertyEqualityComparer<T, P>(getProperty, propertyComparer);
-        }
+        public static PropertyEqualityComparer<T, P> Create<T, P>(
+            Func<T, P> getProperty,
+            IEqualityComparer<P>? propertyComparer = null) =>
+            new PropertyEqualityComparer<T, P>(getProperty, propertyComparer);
     }
 }

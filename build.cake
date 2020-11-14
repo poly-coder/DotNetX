@@ -10,14 +10,8 @@ var nugetApiKey = Argument("nugetApiKey", EnvironmentVariable("NUGET_API_KEY"));
 Information($"Running target {target} in configuration {configuration}");
 
 var packagesDirectory = Directory("./Packages");
-var srcProjects = new [] {
-    "./Src/DotNetX",
-    "./Src/DotNetX.Repl",
-    "./Src/DotNetX.Extensions",
-};
-var testProjects = new [] {
-    "./Test/DotNetX.Tests",
-};
+var srcProjects = GetFiles("./Src/**/*.csproj").Select(p => p.FullPath);
+var testProjects = GetFiles("./Tests/**/*.csproj").Select(p => p.FullPath);
 var allProjects = srcProjects.Concat(testProjects);
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -29,10 +23,6 @@ Task("Noop");
 var cleanTask = Task("Clean")
     .Does(() =>
 {
-    foreach (var project in allProjects)
-    {
-        DotNetCoreClean(project);
-    }
     CleanDirectory(packagesDirectory);
 });
 

@@ -15,7 +15,7 @@ namespace DotNetX
 
         public int Compare(T x, T y) => compareFunc(x, y);
 
-        int IComparer.Compare(object a, object b) =>
+        int IComparer.Compare(object? a, object? b) =>
             a is T x && b is T y
                 ? Compare(x, y) 
                 : throw new InvalidOperationException("Cannot use this comparer with given items");
