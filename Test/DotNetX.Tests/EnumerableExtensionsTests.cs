@@ -154,7 +154,7 @@ namespace DotNetX.Tests
         [Property]
         public bool TwoCollectionsWithSameContentWithComparerAreEqual(NonNull<string[]> text)
         {
-            IReadOnlyCollection<string> uppercased = new Collection<string>(text.Get.Select(s => s != null ? s.ToUpperInvariant() : null).ToArray());
+            IReadOnlyCollection<string?> uppercased = new Collection<string?>(text.Get.Select(s => s != null ? s.ToUpperInvariant() : null).ToArray());
             var lowercased = text.Get.Select(s => s != null ? s.ToLowerInvariant() : null).ToArray();
             uppercased.IsEqualTo(lowercased, StringComparer.InvariantCultureIgnoreCase).Should().BeTrue();
             return true;

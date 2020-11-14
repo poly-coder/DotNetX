@@ -18,17 +18,17 @@ namespace DotNetX.Repl.Builder
     {
         internal string version = "0.0";
         internal List<ReplCommandBuilder> commands = new List<ReplCommandBuilder>();
-        internal Func<CancellationToken, Task<string>> prompt;
-        internal Func<byte[]> persistState;
-        internal Action<byte[]> loadState;
+        internal Func<CancellationToken, Task<string>>? prompt;
+        internal Func<byte[]>? persistState;
+        internal Action<byte[]>? loadState;
 
-        public ReplBuilder WithVersion(string version)
+        public ReplBuilder WithVersion(string? version)
         {
             this.version = version ?? "0.0";
             return this;
         }
 
-        public ReplBuilder WithStatePersistence(Func<byte[]> persistState, Action<byte[]> loadState)
+        public ReplBuilder WithStatePersistence(Func<byte[]> persistState, Action<byte[]>? loadState)
         {
             if (persistState is null)
             {
@@ -45,7 +45,7 @@ namespace DotNetX.Repl.Builder
             return this;
         }
 
-        public ReplBuilder WithPrompt(Func<CancellationToken, Task<string>> prompt)
+        public ReplBuilder WithPrompt(Func<CancellationToken, Task<string>>? prompt)
         {
             if (prompt is null)
             {
@@ -56,7 +56,7 @@ namespace DotNetX.Repl.Builder
             return this;
         }
 
-        public ReplBuilder WithPrompt(Func<Task<string>> prompt)
+        public ReplBuilder WithPrompt(Func<Task<string>>? prompt)
         {
             if (prompt is null)
             {
@@ -289,6 +289,11 @@ namespace DotNetX.Repl.Builder
             ReplParamAttribute replParam,
             ReplCommandPositionalParameterBuilder paramBuilder)
         {
+            if (replParam.TypeName == null)
+            {
+                throw new ArgumentNullException(nameof(replParam.TypeName));
+            }
+
             paramBuilder
                 .WithTypeName(replParam.TypeName)
                 .WithCaption(replParam.Caption)
@@ -343,6 +348,11 @@ namespace DotNetX.Repl.Builder
             ReplOptionAttribute replOption,
             ReplCommandOptionParameterBuilder paramBuilder)
         {
+            if (replOption.TypeName == null)
+            {
+                throw new ArgumentNullException(nameof(replOption.TypeName));
+            }
+
             paramBuilder
                 .WithTypeName(replOption.TypeName)
                 .WithCaption(replOption.Caption)
@@ -462,12 +472,12 @@ namespace DotNetX.Repl.Builder
                 this.Commands = new ReadOnlyCollection<ReplCommandRuntime>(builder.commands.Select(c => new ReplCommandRuntime(c)).ToArray());
             }
 
-            public string Version { get; }
-            public string Caption { get; }
-            public string Description { get; }
+            public string? Version { get; }
+            public string? Caption { get; }
+            public string? Description { get; }
             public Func<CancellationToken, Task<string>> Prompt { get; }
-            public Func<byte[]> PersistStateFunc { get; }
-            public Action<byte[]> LoadStateFunc { get; }
+            public Func<byte[]>? PersistStateFunc { get; }
+            public Action<byte[]>? LoadStateFunc { get; }
             public ReadOnlyCollection<ReplExampleRuntime> Examples { get; }
             public ReadOnlyCollection<ReplCommandRuntime> Commands { get; }
 
@@ -552,14 +562,14 @@ namespace DotNetX.Repl.Builder
             {
                 if (Caption.IsNotNullOrWhiteSpace())
                 {
-                    ConsoleEx.Write(ConsoleColor.Green, "{0} ", Caption);
+                    ConsoleEx.Write(ConsoleColor.Green, "{0} ", Caption ?? "");
                 }
 
-                ConsoleEx.WriteLine(ConsoleColor.White, Version);
+                ConsoleEx.WriteLine(ConsoleColor.White, Version ?? "");
 
                 if (Description.IsNotNullOrWhiteSpace())
                 {
-                    ConsoleEx.WriteLine(ConsoleColor.Gray, Description);
+                    ConsoleEx.WriteLine(ConsoleColor.Gray, Description ?? "");
                 }
             }
 
@@ -723,9 +733,9 @@ namespace DotNetX.Repl.Builder
                                 }
                             }
                         }
-                        else
+                        else if (shortOptions != null || longOption != null)
                         {
-                            var name = shortOptions ?? longOption;
+                            var name = (shortOptions ?? longOption)!;
 
                             var param = commandRuntime.Parameters.FirstOrDefault(p => p.Names.Contains(name, StringComparer.InvariantCultureIgnoreCase));
 
@@ -760,7 +770,7 @@ namespace DotNetX.Repl.Builder
                             return;
                         }
 
-                        optionValues.Add(value);
+                        optionValues!.Add(value);
 
                         if (optionValues.Count >= optionParam.ValueCount)
                         {
@@ -852,7 +862,7 @@ namespace DotNetX.Repl.Builder
                     throw new NotImplementedException();
                 }
 
-                return PersistStateFunc();
+                return PersistStateFunc!();
             }
 
             public void LoadState(byte[] persistedState)
@@ -862,7 +872,7 @@ namespace DotNetX.Repl.Builder
                     throw new NotImplementedException();
                 }
 
-                LoadStateFunc(persistedState);
+                LoadStateFunc!(persistedState);
             }
         }
 
@@ -878,13 +888,17 @@ namespace DotNetX.Repl.Builder
                 this.Parameters = new ReadOnlyCollection<ReplParameterRuntime>(builder.Parameters.Select(e => new ReplParameterRuntime(e)).ToArray());
                 this.Examples = new ReadOnlyCollection<ReplExampleRuntime>(builder.examples.Select(e => new ReplExampleRuntime(e)).ToArray());
                 this.PositionalParameters = new ReadOnlyCollection<ReplParameterRuntime>(this.Parameters.Where(p => p.ParameterType == ReplParameterType.Positional).ToArray());
+                if (builder.Execute == null)
+                {
+                    throw new ArgumentNullException(nameof(builder.Execute));
+                }
                 this.Execute = builder.Execute;
             }
 
             public ReadOnlyCollection<string> Names { get; }
-            public string Category { get; }
-            public string Caption { get; }
-            public string Description { get; }
+            public string? Category { get; }
+            public string? Caption { get; }
+            public string? Description { get; }
             public ReadOnlyCollection<ReplParameterRuntime> Parameters { get; }
             public ReadOnlyCollection<ReplExampleRuntime> Examples { get; }
             public ReadOnlyCollection<ReplParameterRuntime> PositionalParameters { get; }
@@ -942,7 +956,7 @@ namespace DotNetX.Repl.Builder
 
                 if (Description.IsNotNullOrWhiteSpace())
                 {
-                    ConsoleEx.WriteLine(ConsoleColor.DarkGray, Description);
+                    ConsoleEx.WriteLine(ConsoleColor.DarkGray, Description ?? "");
                     Console.WriteLine();
                 }
 
@@ -994,6 +1008,10 @@ namespace DotNetX.Repl.Builder
                     case ReplCommandOptionParameterBuilder option:
                         this.ParameterType = ReplParameterType.Option;
                         this.IsRequired = option.IsRequired;
+                        if (option.TypeName == null)
+                        {
+                            throw new ArgumentNullException(nameof(option.TypeName));
+                        }
                         this.TypeName = option.TypeName;
                         this.IsRepeated = option.IsRepeated;
                         this.ValueCount = option.ValueCount;
@@ -1001,6 +1019,10 @@ namespace DotNetX.Repl.Builder
                     case ReplCommandPositionalParameterBuilder param:
                         this.ParameterType = ReplParameterType.Positional;
                         this.IsRequired = param.IsRequired;
+                        if (param.TypeName == null)
+                        {
+                            throw new ArgumentNullException(nameof(param.TypeName));
+                        }
                         this.TypeName = param.TypeName;
                         this.IsRepeated = param.IsRepeated;
                         break;
@@ -1011,11 +1033,11 @@ namespace DotNetX.Repl.Builder
 
             public bool IsRequired { get; }
             public ReadOnlyCollection<string> Names { get; }
-            public string Caption { get; }
-            public string Description { get; }
+            public string? Caption { get; }
+            public string? Description { get; }
             public ReadOnlyCollection<ReplExampleRuntime> Examples { get; }
             public ReplParameterType ParameterType { get; }
-            public object TypeName { get; }
+            public object? TypeName { get; }
             public bool IsRepeated { get; }
             public int ValueCount { get; }
             public bool CaptureRest { get; }
@@ -1038,7 +1060,7 @@ namespace DotNetX.Repl.Builder
 
                 if (Description.IsNotNullOrWhiteSpace())
                 {
-                    ConsoleEx.WriteLine(ConsoleColor.DarkGray, Description);
+                    ConsoleEx.WriteLine(ConsoleColor.DarkGray, Description ?? "");
                     Console.WriteLine();
                 }
 
@@ -1063,22 +1085,22 @@ namespace DotNetX.Repl.Builder
                 this.Description = builder.description;
             }
 
-            public string Command { get; }
-            public string Caption { get; }
-            public string Description { get; }
+            public string? Command { get; }
+            public string? Caption { get; }
+            public string? Description { get; }
 
             internal void PrintHelp(string indent)
             {
                 if (Caption.IsNotNullOrWhiteSpace())
                 {
-                    ConsoleEx.WriteLine(ConsoleColor.Gray, "{0}{1}", indent, Caption);
+                    ConsoleEx.WriteLine(ConsoleColor.Gray, "{0}{1}", indent, Caption ?? "");
                 }
 
-                ConsoleEx.WriteLine(ConsoleColor.White, "{0}{1}", indent, Command);
+                ConsoleEx.WriteLine(ConsoleColor.White, "{0}{1}", indent, Command ?? "");
 
                 if (Description.IsNotNullOrWhiteSpace())
                 {
-                    ConsoleEx.WriteLine(ConsoleColor.DarkGray, "{0}{1}", indent, Description);
+                    ConsoleEx.WriteLine(ConsoleColor.DarkGray, "{0}{1}", indent, Description ?? "");
                 }
             }
         }

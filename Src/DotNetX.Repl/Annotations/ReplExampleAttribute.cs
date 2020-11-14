@@ -12,8 +12,8 @@ namespace DotNetX.Repl.Annotations
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method | AttributeTargets.Property | AttributeTargets.Parameter, Inherited = false, AllowMultiple = true)]
     public sealed class ReplExampleAttribute : Attribute
     {
-        public string Caption { get; set; }
-        public string Description { get; set; }
+        public string? Caption { get; set; }
+        public string? Description { get; set; }
         public string Command { get; set; }
         public ReplExampleScope Scope { get; set; } = ReplExampleScope.Local;
 

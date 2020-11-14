@@ -3,11 +3,11 @@
     public class ReplCommandPositionalParameterBuilder :
         ReplCommandParameterBuilder<ReplCommandPositionalParameterBuilder>
     {
-        internal string typeName;
+        internal string? typeName;
         internal bool isRequired;
         internal bool isRepeated;
 
-        public string TypeName => typeName;
+        public string? TypeName => typeName;
 
         public bool IsRequired => isRequired;
 

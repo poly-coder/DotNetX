@@ -41,7 +41,7 @@ namespace DotNetX.Tests
         #region [ IsNullOrEmpty / IsNullOrWhiteSpace ]
 
         [Property]
-        public bool NullIsNullOrEmpty() => ((string)null).IsNullOrEmpty();
+        public bool NullIsNullOrEmpty() => ((string?)null).IsNullOrEmpty();
 
         [Property]
         public bool EmptyIsNullOrEmpty() => "".IsNullOrEmpty();
@@ -54,7 +54,7 @@ namespace DotNetX.Tests
             !new String(' ', size.Get).IsNullOrEmpty();
 
         [Property]
-        public bool NullIsNullOrWhiteSpace() => ((string)null).IsNullOrWhiteSpace();
+        public bool NullIsNullOrWhiteSpace() => ((string?)null).IsNullOrWhiteSpace();
 
         [Property]
         public bool EmptyIsNullOrWhiteSpace() => "".IsNullOrWhiteSpace();

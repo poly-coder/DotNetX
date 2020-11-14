@@ -26,7 +26,7 @@ namespace DotNetX.Repl
         private readonly IReplRuntime runtime;
         private readonly ReplEngineOptions options;
 
-        public ReplEngine(IReplRuntime runtime, ReplEngineOptions options = null)
+        public ReplEngine(IReplRuntime runtime, ReplEngineOptions? options = null)
         {
             this.runtime = runtime;
             this.options = options ?? new ReplEngineOptions();
@@ -67,7 +67,7 @@ namespace DotNetX.Repl
                 {
                     if (option != null)
                     {
-                        runtime.PrintOptionHelp(command, option);
+                        runtime.PrintOptionHelp(command!, option);
                     }
                     else if (command != null)
                     {
@@ -97,17 +97,17 @@ namespace DotNetX.Repl
                     }
                     else if (IsRemoveStateCommand(line, out var name))
                     {
-                        RemoveState(name);
+                        RemoveState(name!);
                         continue;
                     }
                     else if (IsStoreStateCommand(line, out name))
                     {
-                        await StoreState(name);
+                        await StoreState(name!);
                         continue;
                     }
                     else if (IsLoadStateCommand(line, out name))
                     {
-                        await LoadState(name);
+                        await LoadState(name!);
                         continue;
                     }
                 }
@@ -132,7 +132,7 @@ namespace DotNetX.Repl
             {
                 foreach (var pair in pairs)
                 {
-                    ConsoleEx.WriteLine(ConsoleColor.White, "  {0}", pair.name);
+                    ConsoleEx.WriteLine(ConsoleColor.White, "  {0}", pair.name ?? "");
                 }
             }
             else
@@ -177,7 +177,7 @@ namespace DotNetX.Repl
                     }
                     catch
                     {
-                        ConsoleEx.WriteLine(ConsoleColor.Red, "Could not delete state {0} on file {1}", pair.name, pair.fileName);
+                        ConsoleEx.WriteLine(ConsoleColor.Red, "Could not delete state {0} on file {1}", pair.name!, pair.fileName);
                     }
                 }
 
@@ -287,7 +287,7 @@ namespace DotNetX.Repl
             }
         }
 
-        private bool IsStateFileName(string fileName, out string stateName)
+        private bool IsStateFileName(string fileName, out string? stateName)
         {
             var name = Path.GetFileName(fileName);
 
@@ -337,7 +337,7 @@ namespace DotNetX.Repl
             return InformationCommandRegex.IsMatch(line);
         }
 
-        private bool IsHelpCommand(string line, out string command, out string option)
+        private bool IsHelpCommand(string line, out string? command, out string? option)
         {
             var match = HelpCommandRegex.Match(line);
             command = null;
@@ -375,7 +375,7 @@ namespace DotNetX.Repl
             return ClearStatesCommandRegex.IsMatch(line);
         }
 
-        private bool IsStoreStateCommand(string line, out string name)
+        private bool IsStoreStateCommand(string line, out string? name)
         {
             var match = StoreStateCommandRegex.Match(line);
             name = null;
@@ -395,7 +395,7 @@ namespace DotNetX.Repl
             return false;
         }
 
-        private bool IsLoadStateCommand(string line, out string name)
+        private bool IsLoadStateCommand(string line, out string? name)
         {
             var match = LoadStateCommandRegex.Match(line);
             name = null;
@@ -415,7 +415,7 @@ namespace DotNetX.Repl
             return false;
         }
 
-        private bool IsRemoveStateCommand(string line, out string name)
+        private bool IsRemoveStateCommand(string line, out string? name)
         {
             var match = RemoveStateCommandRegex.Match(line);
             name = null;

@@ -507,17 +507,24 @@ namespace DotNetX
 
         public static IEnumerable<TValue> Unfold<TValue, TKey>(
             this TValue source,
-            Func<TValue, TValue> getNext,
+            Func<TValue, TValue?> getNext,
             Func<TValue, TKey> getKey,
             IEqualityComparer<TKey>? comparer = null)
             where TValue : class
         {
-            return source.Unfold(getNext, getKey, Predicate.IsNonNull, comparer);
+            return source.Singleton().Where(Predicate.IsNonNull).DepthFirstSearch(
+                current =>
+                {
+                    var next = getNext(current);
+                    return next != null ? next.Singleton() : null;
+                },
+                getKey,
+                comparer);
         }
 
         public static IEnumerable<TValue> Unfold<TValue>(
             this TValue source,
-            Func<TValue, TValue> getNext,
+            Func<TValue, TValue?> getNext,
             IEqualityComparer<TValue>? comparer = null)
             where TValue : class
         {

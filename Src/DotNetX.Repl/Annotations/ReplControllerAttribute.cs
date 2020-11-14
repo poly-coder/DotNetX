@@ -6,8 +6,8 @@ namespace DotNetX.Repl.Annotations
     public sealed class ReplControllerAttribute : Attribute
     {
         public string Caption { get; set; }
-        public string Description { get; set; }
-        public string Version { get; set; }
+        public string? Description { get; set; }
+        public string? Version { get; set; }
 
         public ReplControllerAttribute(string caption)
         {

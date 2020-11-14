@@ -5,12 +5,12 @@ namespace DotNetX.Repl.Builder
     public class ReplCommandOptionParameterBuilder : 
         ReplCommandParameterBuilder<ReplCommandOptionParameterBuilder>
     {
-        private string typeName;
+        private string? typeName;
         private bool isRequired;
         private bool isRepeated;
         private int valueCount = 1;
 
-        public string TypeName => typeName;
+        public string? TypeName => typeName;
         public bool IsRequired => isRequired;
         public bool IsRepeated => isRepeated;
         public int ValueCount => valueCount;

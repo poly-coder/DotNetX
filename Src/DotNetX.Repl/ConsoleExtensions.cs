@@ -450,12 +450,12 @@ namespace DotNetX.Repl
         {
             internal ConsoleColor? ForegroundColor;
             internal ConsoleColor? BackgroundColor;
-            internal string Message;
-            internal object Arg0;
-            internal object Arg1;
-            internal object Arg2;
-            internal object[] Args;
-            internal object Value;
+            internal string? Message;
+            internal object? Arg0;
+            internal object? Arg1;
+            internal object? Arg2;
+            internal object[]? Args;
+            internal object? Value;
 
             public override string ToString()
             {
@@ -480,7 +480,7 @@ namespace DotNetX.Repl
 
     public class ConsoleForm
     {
-        public string Title { get; set; }
+        public string? Title { get; set; }
         public int? Width { get; set; }
         public int FieldPad { get; set; } = 20;
 
