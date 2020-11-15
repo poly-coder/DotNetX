@@ -9,23 +9,49 @@ namespace DotNetX
         private bool disposedValue;
         private readonly List<IDisposable> disposables = new List<IDisposable>();
 
-        public void Add(params IDisposable[] disposables)
+        public Disposables Add(IDisposable disposable)
+        {
+            if (disposable is null)
+            {
+                throw new ArgumentNullException(nameof(disposable));
+            }
+
+            this.disposables.Add(disposable);
+
+            return this;
+        }
+
+        public Disposables Add(IEnumerable<IDisposable> disposables)
         {
             if (disposables is null)
             {
                 throw new ArgumentNullException(nameof(disposables));
             }
 
-            foreach (var item in disposables)
+            this.disposables.AddRange(disposables.Where(d =>
             {
-                if (item is null)
+                if (d is null)
                 {
-                    throw new ArgumentNullException(nameof(disposables), "You cannot pass a null disposable");
+                    throw new ArgumentNullException(nameof(disposables), 
+                        "You cannot pass a null disposable");
                 }
-            }
+                return !disposables.Contains(d);
+            }));
 
-            this.disposables.AddRange(disposables.Where(d => !disposables.Contains(d)));
+            return this;
         }
+
+        public Disposables Add(params IDisposable[] disposables) =>
+            Add(disposables as IEnumerable<IDisposable>);
+
+        public Disposables Add(Action dispose) =>
+            Add(new Disposable(dispose));
+
+        public Disposables Add(IEnumerable<Action> disposeActions) =>
+            Add(disposeActions.Select(d => new Disposable(d)));
+
+        public Disposables Add(params Action[] disposeActions) =>
+            Add(disposeActions as IEnumerable<Action>);
 
         protected virtual void Dispose(bool disposing)
         {

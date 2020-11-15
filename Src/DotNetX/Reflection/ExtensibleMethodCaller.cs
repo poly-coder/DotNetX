@@ -388,7 +388,7 @@ namespace DotNetX.Reflection
     public class ExtensibleMethodCaller<T, TResult> : IExtensibleMethodCaller<T, TResult>
     {
         private readonly ExtensibleMethodCaller innerCaller;
-        private readonly Func<object, TResult> toResult;
+        private readonly Func<object?, TResult> toResult;
 
         public ExtensibleMethodCaller(
             ExtensibleMethodCaller innerCaller,
@@ -434,14 +434,14 @@ namespace DotNetX.Reflection
     public class ExtensibleMethodCaller<T, TInput, TResult> : IExtensibleMethodCaller<T, TInput, TResult>
     {
         private readonly ExtensibleMethodCaller innerCaller;
-        private readonly Func<object, TResult> toResult;
+        private readonly Func<object?, TResult> toResult;
 
         public ExtensibleMethodCaller(
             ExtensibleMethodCaller innerCaller,
-            Func<object, TResult>? toResult = null)
+            Func<object?, TResult>? toResult = null)
         {
             this.innerCaller = innerCaller ?? throw new ArgumentNullException(nameof(innerCaller));
-            this.toResult = toResult ?? (obj => (TResult)obj);
+            this.toResult = toResult ?? (obj => (TResult)obj!);
         }
 
         public ExtensibleMethodCaller.SpecificTypeInfo GetInfo(Type type)

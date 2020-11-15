@@ -2,6 +2,7 @@
 
 namespace DotNetX
 {
+
     public class Disposable : IDisposable
     {
         private bool disposedValue;

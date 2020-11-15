@@ -33,7 +33,7 @@ namespace DotNetX
             }
         }
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             return obj is Optional<T> optional && Equals(optional);
         }
