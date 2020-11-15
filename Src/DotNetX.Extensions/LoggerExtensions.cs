@@ -89,7 +89,7 @@ namespace DotNetX
             this ILogger logger,
             string caption,
             Func<T> operation,
-            Func<T, (string, object[])?>? showResult = null,
+            Func<T, (string, object[])?> showResult,
             LogOperationOptions? options = null)
         {
             var opts = options ?? LogOperationOptions.Default;
@@ -106,7 +106,7 @@ namespace DotNetX
 
                     watch.Stop();
 
-                    opts.LogEnd(logger, watch.Elapsed, showResult?.Invoke(result));
+                    opts.LogEnd(logger, watch.Elapsed, showResult.Invoke(result));
 
                     return result;
                 }
@@ -126,7 +126,7 @@ namespace DotNetX
             string caption,
             object[] captionArgs,
             Func<T> operation,
-            Func<T, (string, object[])?>? showResult = null,
+            Func<T, (string, object[])?> showResult,
             LogOperationOptions? options = null)
         {
             var opts = options ?? LogOperationOptions.Default;
@@ -143,7 +143,7 @@ namespace DotNetX
 
                     watch.Stop();
 
-                    opts.LogEnd(logger, watch.Elapsed, showResult?.Invoke(result));
+                    opts.LogEnd(logger, watch.Elapsed, showResult.Invoke(result));
 
                     return result;
                 }
@@ -312,7 +312,7 @@ namespace DotNetX
             this ILogger logger,
             string caption,
             Func<Task<T>> operation,
-            Func<T, (string, object[])?>? showResult = null,
+            Func<T, (string, object[])?> showResult,
             LogOperationOptions? options = null)
         {
             var opts = options ?? LogOperationOptions.Default;
@@ -329,7 +329,7 @@ namespace DotNetX
 
                     watch.Stop();
 
-                    opts.LogEnd(logger, watch.Elapsed, showResult?.Invoke(result));
+                    opts.LogEnd(logger, watch.Elapsed, showResult.Invoke(result));
 
                     return result;
                 }
@@ -349,7 +349,7 @@ namespace DotNetX
             string caption,
             object[] captionArgs,
             Func<Task<T>> operation,
-            Func<T, (string, object[])?>? showResult = null,
+            Func<T, (string, object[])?> showResult,
             LogOperationOptions? options = null)
         {
             var opts = options ?? LogOperationOptions.Default;
@@ -366,7 +366,7 @@ namespace DotNetX
 
                     watch.Stop();
 
-                    opts.LogEnd(logger, watch.Elapsed, showResult?.Invoke(result));
+                    opts.LogEnd(logger, watch.Elapsed, showResult.Invoke(result));
 
                     return result;
                 }
@@ -517,7 +517,7 @@ namespace DotNetX
             this ILogger logger,
             string caption,
             IEnumerable<T> source,
-            Func<T, (string, object[])?>? showResult = null,
+            Func<T, (string, object[])?> showResult,
             LogEnumerableOptions? options = null)
         {
             var opts = options ?? LogEnumerableOptions.Default;
@@ -530,7 +530,7 @@ namespace DotNetX
 
                 foreach (var item in source)
                 {
-                    opts.LogValue(logger, watch.Elapsed, showResult?.Invoke(item));
+                    opts.LogValue(logger, watch.Elapsed, showResult.Invoke(item));
 
                     yield return item;
                 }
@@ -545,7 +545,7 @@ namespace DotNetX
             string caption,
             object[] captionArgs,
             IEnumerable<T> source,
-            Func<T, (string, object[])?>? showResult = null,
+            Func<T, (string, object[])?> showResult,
             LogEnumerableOptions? options = null)
         {
             var opts = options ?? LogEnumerableOptions.Default;
@@ -558,7 +558,7 @@ namespace DotNetX
 
                 foreach (var item in source)
                 {
-                    opts.LogValue(logger, watch.Elapsed, showResult?.Invoke(item));
+                    opts.LogValue(logger, watch.Elapsed, showResult.Invoke(item));
 
                     yield return item;
                 }
@@ -632,7 +632,7 @@ namespace DotNetX
             this ILogger logger,
             string caption,
             IAsyncEnumerable<T> source,
-            Func<T, (string, object[])?>? showResult = null,
+            Func<T, (string, object[])?> showResult,
             LogEnumerableOptions? options = null)
         {
             var opts = options ?? LogEnumerableOptions.Default;
@@ -645,7 +645,7 @@ namespace DotNetX
 
                 await foreach (var item in source)
                 {
-                    opts.LogValue(logger, watch.Elapsed, showResult?.Invoke(item));
+                    opts.LogValue(logger, watch.Elapsed, showResult.Invoke(item));
 
                     yield return item;
                 }
@@ -660,7 +660,7 @@ namespace DotNetX
             string caption,
             object[] captionArgs,
             IAsyncEnumerable<T> source,
-            Func<T, (string, object[])?>? showResult = null,
+            Func<T, (string, object[])?> showResult,
             LogEnumerableOptions? options = null)
         {
             var opts = options ?? LogEnumerableOptions.Default;
@@ -673,7 +673,7 @@ namespace DotNetX
 
                 await foreach (var item in source)
                 {
-                    opts.LogValue(logger, watch.Elapsed, showResult?.Invoke(item));
+                    opts.LogValue(logger, watch.Elapsed, showResult.Invoke(item));
 
                     yield return item;
                 }
