@@ -253,7 +253,7 @@ namespace DotNetX.Reflection
         #endregion [ GetAttributes / GetConventionValue ]
 
 
-        #region [ Traversals ]
+        #region [ GetClassHierarchy / GetTypeHierarchy ]
 
         public static IEnumerable<Type> GetClassHierarchy(this Type type)
         {
@@ -265,7 +265,7 @@ namespace DotNetX.Reflection
             return type.DepthFirstSearch(t => t.BaseType.SingletonNonNull().Concat(t.GetInterfaces()));
         }
 
-        #endregion [ Traversals ]
+        #endregion [ GetClassHierarchy / GetTypeHierarchy ]
 
 
         #region [ Predicates ]
@@ -424,5 +424,51 @@ namespace DotNetX.Reflection
         }
 
         #endregion [ ConformsTo ]
+
+
+        #region [ ExportedTypes / ConcreteClassesImplementing / ... ]
+
+        public static IEnumerable<Type> ExportedTypes(this IEnumerable<Assembly> source)
+        {
+            if (source is null)
+            {
+                throw new ArgumentNullException(nameof(source));
+            }
+
+            return source.SelectMany(assembly => assembly.GetExportedTypes());
+        }
+
+        public static IEnumerable<Type> ConcreteClassesImplementing<TBase>(this IEnumerable<Type> source)
+            where TBase : class
+        {
+            if (source is null)
+            {
+                throw new ArgumentNullException(nameof(source));
+            }
+
+            return source.Where(IsConcreteClassImplementing<TBase>);
+        }
+
+        public static bool IsConcreteClassImplementing<TBase>(this Type type)
+            where TBase : class
+        {
+            if (type is null)
+            {
+                throw new ArgumentNullException(nameof(type));
+            }
+
+            return type.IsClass && !type.IsAbstract && typeof(TBase).IsAssignableFrom(type);
+        }
+
+        public static IEnumerable<TInstance> ActivateAs<TInstance>(
+            this IEnumerable<Type> types,
+            Func<Type, TInstance>? activator = null) =>
+            types.Select(activator ?? SystemActivator<TInstance>);
+
+        public static TInstance SystemActivator<TInstance>(this Type type) =>
+            (TInstance)Activator.CreateInstance(type)!;
+
+        #endregion [ ExportedTypes / ConcreteClassesImplementing / ... ]
+
     }
 }

@@ -5,7 +5,7 @@
     <LangVersion>9.0</LangVersion>
     <RootNamespace>DotNetX</RootNamespace>
     <PackageId>DotNetX.Extensions</PackageId>
-    <Version>0.1.1</Version>
+    <Version>0.1.2</Version>
     <Authors>Iskander Sierra</Authors>
     <Company>PolyCoder</Company>
     <Product>PolyCoder CSharp Framework</Product>
@@ -20,6 +20,7 @@
     <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.2.0" />
     <PackageReference Include="Microsoft.AspNetCore.Http.Extensions" Version="2.2.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="5.0.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="5.0.0" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="5.0.0" />
   </ItemGroup>
 

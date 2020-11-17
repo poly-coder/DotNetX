@@ -3,6 +3,8 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace DotNetX
 {
@@ -66,6 +68,37 @@ namespace DotNetX
                 action(item);
             }
         }
+
+        public static async Task ForEachAsync<T>(
+            this IEnumerable<T> source, 
+            Func<T, CancellationToken, Task> action, 
+            CancellationToken cancellationToken = default)
+        {
+            if (source is null)
+            {
+                throw new ArgumentNullException(nameof(source));
+            }
+
+            if (action is null)
+            {
+                throw new ArgumentNullException(nameof(action));
+            }
+
+            foreach (var item in source)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                await action(item, cancellationToken);
+            }
+        }
+
+        public static Task ForEachAsync<T>(
+            this IEnumerable<T> source,
+            Func<T, Task> action,
+            CancellationToken cancellationToken = default) =>
+            source.ForEachAsync(
+                (v, _ct) => action(v),
+                cancellationToken);
 
         #endregion [ ForEach ]
 
