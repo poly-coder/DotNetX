@@ -71,7 +71,7 @@ namespace DotNetX
             var context = new ServiceCollectionInitializerContext(services, configuration);
 
             assemblies
-                .SelectMany(assembly => assemblies.ExportedTypes())
+                .ExportedTypes()
                 .ConcreteClassesImplementing<IServiceCollectionInitializer>()
                 .ActivateAs<IServiceCollectionInitializer>()
                 .Initialize(context);
