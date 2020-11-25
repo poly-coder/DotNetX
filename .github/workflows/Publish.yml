@@ -23,5 +23,5 @@ jobs:
     - name: Restore dotnet tools
       run: dotnet tool restore
 
-    - name: Build and Push Nuget Packages with Cake
+    - name: Build, Test and Push
       run: dotnet cake --target=Push --configuration=Release

@@ -8,7 +8,7 @@ env:
   NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
 
 jobs:
-  publish:
+  testPR:
 
     runs-on: ubuntu-latest
 
@@ -23,5 +23,5 @@ jobs:
     - name: Restore dotnet tools
       run: dotnet tool restore
 
-    - name: Build and Push Nuget Packages with Cake
+    - name: Build, Test and Pack
       run: dotnet cake --target=Pack --configuration=Release
