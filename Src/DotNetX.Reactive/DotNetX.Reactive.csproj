@@ -5,7 +5,7 @@
     <LangVersion>9.0</LangVersion>
     <RootNamespace>DotNetX.Reactive</RootNamespace>
     <PackageId>DotNetX.Reactive</PackageId>
-    <Version>0.0.2</Version>
+    <Version>0.0.3</Version>
     <Authors>Iskander Sierra</Authors>
     <Company>PolyCoder</Company>
     <Product>PolyCoder CSharp Framework</Product>

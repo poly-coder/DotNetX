@@ -36,11 +36,15 @@ namespace DotNetX.Reactive
             return self.DeferDispose(reactive);
         }
 
+        private static Computed<T> ComputedFactory<T>(IObservable<T> stream) =>
+            new Computed<T>(stream);
+
         public static Computed<T> RawComputed<T>(
             this IReactiveElement self,
             IObservable<T> valueStream) =>
-            self.CreateReactive(valueStream, stream => new Computed<T>(stream));
+            self.CreateReactive(valueStream, ComputedFactory);
 
+        #region [ Effect ]
 
         public static IDisposable Effect<T>(this IReactiveElement self, IObservable<T> stream, Action<T> reaction)
         {
@@ -72,6 +76,10 @@ namespace DotNetX.Reactive
 
         public static IDisposable Effect(this IReactiveElement self, Command command) =>
             self.Effect(command.Stream);
+
+        #endregion [ Effect ]
+
+        #region [ Property ]
 
         public static Property<T> Property<T>(
             this IReactiveElement self,
@@ -109,6 +117,10 @@ namespace DotNetX.Reactive
                 comparer);
         }
 
+        #endregion [ Property ]
+
+        #region [ Command ]
+
         public static Command<T> Command<T>(this IReactiveElement self)
         {
             if (self is null)
@@ -143,80 +155,99 @@ namespace DotNetX.Reactive
             return command;
         }
 
-        public static Computed<TValue> Computed<TValue>(
+        #endregion [ Command ]
+
+        #region [ Reactive ]
+
+        public static TReactive Reactive<TValue, TReactive>(
             this IReactiveElement self,
+            Func<IObservable<TValue>, TReactive> factory,
             IObservable<TValue> source,
             IEqualityComparer<TValue>? comparer = null)
+            where TReactive : class, IUpdatableElement, IDisposable
         {
             if (comparer != null)
             {
                 source = source.DistinctUntilChanged(comparer ?? EqualityComparer<TValue>.Default);
             }
 
-            return self.RawComputed(source);
+            return self.CreateReactive(source, factory);
         }
 
-        public static Computed<TValue> Computed<TValue, TState>(
+        public static TReactive Reactive<TValue, TState, TReactive>(
             this IReactiveElement self,
+            Func<IObservable<TValue>, TReactive> factory,
             IObservable<TState> source,
             Func<TState, TValue> select,
-            IEqualityComparer<TValue>? comparer = null) =>
-            self.Computed(source.Select(select), comparer);
+            IEqualityComparer<TValue>? comparer = null)
+            where TReactive : class, IUpdatableElement, IDisposable =>
+            self.Reactive(factory, source.Select(select), comparer);
 
-        public static Computed<T> Computed<T, TEvent>(
+        public static TReactive Reactive<TValue, TEvent, TReactive>(
             this IReactiveElement self,
-            T initialValue,
+            Func<IObservable<TValue>, TReactive> factory,
+            TValue initialValue,
             IObservable<TEvent> events,
-            Func<T, TEvent, T> update,
-            IEqualityComparer<T>? comparer = null) =>
-            self.Computed(
+            Func<TValue, TEvent, TValue> update,
+            IEqualityComparer<TValue>? comparer = null)
+            where TReactive : class, IUpdatableElement, IDisposable =>
+            self.Reactive(
+                factory,
                 events
                     .Scan(initialValue, update)
                     .StartWith(initialValue), comparer);
 
-        public static Computed<TValue> Computed<TValue>(
+        public static TReactive Reactive<TValue, TReactive>(
             this IReactiveElement self,
+            Func<IObservable<TValue>, TReactive> factory,
             TValue initialValue,
             IObservable<Func<TValue, TValue>> updates,
-            IEqualityComparer<TValue>? comparer = null) =>
-            self.Computed(
+            IEqualityComparer<TValue>? comparer = null)
+            where TReactive : class, IUpdatableElement, IDisposable =>
+            self.Reactive(
+                factory,
                 updates
                     .Scan(initialValue, (acc, update) => update(acc))
                     .StartWith(initialValue), comparer);
 
-        public static Computed<TValue> Computed<TValue, TState, TEvent>(
+        public static TReactive Reactive<TValue, TState, TEvent, TReactive>(
             this IReactiveElement self,
+            Func<IObservable<TValue>, TReactive> factory,
             TState initialState,
             IObservable<TEvent> events,
             Func<TState, TEvent, TState> update,
             Func<TState, TValue> select,
-            IEqualityComparer<TValue>? comparer = null) =>
-            self.Computed(
+            IEqualityComparer<TValue>? comparer = null)
+            where TReactive : class, IUpdatableElement, IDisposable =>
+            self.Reactive(
+                factory,
                 events
                     .Scan(initialState, update)
                     .StartWith(initialState)
                     .Select(select), comparer);
 
-        public static Computed<TValue> Computed<TValue, TState>(
+        public static TReactive Reactive<TValue, TState, TReactive>(
             this IReactiveElement self,
+            Func<IObservable<TValue>, TReactive> factory,
             TState initialState,
             IObservable<Func<TState, TState>> updates,
             Func<TState, TValue> select,
-            IEqualityComparer<TValue>? comparer = null) =>
-            self.Computed(
+            IEqualityComparer<TValue>? comparer = null)
+            where TReactive : class, IUpdatableElement, IDisposable =>
+            self.Reactive(
+                factory,
                 updates
                     .Scan(initialState, (acc, update) => update(acc))
                     .StartWith(initialState)
                     .Select(select), comparer);
 
-        public static Computed<LoadingResult<TValue, TError>> Computed<TValue, TCommand, TError>(
-            this IReactiveElement self,
+        private static IObservable<Func<LoadingResult<TValue, TError>, LoadingResult<TValue, TError>>> CreateUpdates<TValue, TCommand, TError>(
             TCommand? initialCommand,
             IObservable<TCommand?> reloadCommand,
             Func<TCommand?, IObservable<TValue>> loadProperty,
             Func<Exception, TError> onError)
         {
-            var updates = reloadCommand
+            return reloadCommand
                 .StartWith(initialCommand)
                 .Select(command =>
                     loadProperty(command)
@@ -248,26 +279,139 @@ namespace DotNetX.Reactive
                             }
                         })
                         .StartWith(previous => previous))
-                .Switch()
+                .Switch();
+        }
+
+        public static TReactive Reactive<TValue, TCommand, TError, TReactive>(
+            this IReactiveElement self,
+            Func<IObservable<LoadingResult<TValue, TError>>, TReactive> factory,
+            TCommand? initialCommand,
+            IObservable<TCommand?> reloadCommand,
+            Func<TCommand?, IObservable<TValue>> loadProperty,
+            Func<Exception, TError> onError)
+            where TReactive : class, IUpdatableElement, IDisposable
+        {
+            var updates = CreateUpdates(initialCommand, reloadCommand, loadProperty, onError)
                 .Replay(1);
 
             self.DeferDispose(updates.Connect());
 
-            return self.Computed(
+            return self.Reactive(
+                factory,
                 LoadingResult.Create<TValue, TError>().StartLoading(),
                 updates);
         }
+
+        public static TReactive Reactive<TValue, TError, TReactive>(
+            this IReactiveElement self,
+            Func<IObservable<LoadingResult<TValue, TError>>, TReactive> factory,
+            IObservable<Unit> reloadCommand,
+            Func<IObservable<TValue>> loadProperty,
+            Func<Exception, TError> onError)
+            where TReactive : class, IUpdatableElement, IDisposable =>
+            self.Reactive(
+                factory,
+                Unit.Default,
+                reloadCommand,
+                (_) => loadProperty(),
+                onError);
+
+        public static TReactive Reactive<TValue, TCommand, TError, TReactive>(
+            this IReactiveElement self,
+            Func<IObservable<LoadingResult<TValue, TError>>, TReactive> factory,
+            TCommand? initialCommand,
+            IObservable<TCommand?> reloadCommand,
+            Func<TCommand?, Task<TValue>> loadProperty,
+            Func<Exception, TError> onError)
+            where TReactive : class, IUpdatableElement, IDisposable =>
+            self.Reactive(
+                factory,
+                initialCommand,
+                reloadCommand,
+                c => Observable.FromAsync(() => loadProperty(c)),
+                onError);
+
+        public static TReactive Reactive<TValue, TCommand, TError, TReactive>(
+            this IReactiveElement self,
+            Func<IObservable<LoadingResult<TValue, TError>>, TReactive> factory,
+            IObservable<TCommand?> reloadCommand,
+            Func<TCommand?, Task<TValue>> loadProperty,
+            Func<Exception, TError> onError)
+            where TReactive : class, IUpdatableElement, IDisposable =>
+            self.Reactive(factory, default, reloadCommand, loadProperty, onError);
+
+        public static TReactive Reactive<TValue, TError, TReactive>(
+            this IReactiveElement self,
+            Func<IObservable<LoadingResult<TValue, TError>>, TReactive> factory,
+            IObservable<Unit> reloadCommand,
+            Func<Task<TValue>> loadProperty,
+            Func<Exception, TError> onError)
+            where TReactive : class, IUpdatableElement, IDisposable =>
+            self.Reactive(factory, Unit.Default, reloadCommand, (_) => loadProperty(), onError);
+
+        #endregion [ Reactive ]
+
+        #region [ Computed ]
+
+        public static Computed<TValue> Computed<TValue>(
+            this IReactiveElement self,
+            IObservable<TValue> source,
+            IEqualityComparer<TValue>? comparer = null) =>
+            self.Reactive(ComputedFactory, source, comparer);
+
+        public static Computed<TValue> Computed<TValue, TState>(
+            this IReactiveElement self,
+            IObservable<TState> source,
+            Func<TState, TValue> select,
+            IEqualityComparer<TValue>? comparer = null) =>
+            self.Reactive(ComputedFactory, source, select, comparer);
+
+        public static Computed<T> Computed<T, TEvent>(
+            this IReactiveElement self,
+            T initialValue,
+            IObservable<TEvent> events,
+            Func<T, TEvent, T> update,
+            IEqualityComparer<T>? comparer = null) =>
+            self.Reactive(ComputedFactory, initialValue, events, update, comparer);
+
+        public static Computed<TValue> Computed<TValue>(
+            this IReactiveElement self,
+            TValue initialValue,
+            IObservable<Func<TValue, TValue>> updates,
+            IEqualityComparer<TValue>? comparer = null) =>
+            self.Reactive(ComputedFactory, initialValue, updates, comparer);
+
+        public static Computed<TValue> Computed<TValue, TState, TEvent>(
+            this IReactiveElement self,
+            TState initialState,
+            IObservable<TEvent> events,
+            Func<TState, TEvent, TState> update,
+            Func<TState, TValue> select,
+            IEqualityComparer<TValue>? comparer = null) =>
+            self.Reactive(ComputedFactory, initialState, events, update, select, comparer);
+
+        public static Computed<TValue> Computed<TValue, TState>(
+            this IReactiveElement self,
+            TState initialState,
+            IObservable<Func<TState, TState>> updates,
+            Func<TState, TValue> select,
+            IEqualityComparer<TValue>? comparer = null) =>
+            self.Reactive(ComputedFactory, initialState, updates, select, comparer);
+
+        public static Computed<LoadingResult<TValue, TError>> Computed<TValue, TCommand, TError>(
+            this IReactiveElement self,
+            TCommand? initialCommand,
+            IObservable<TCommand?> reloadCommand,
+            Func<TCommand?, IObservable<TValue>> loadProperty,
+            Func<Exception, TError> onError) =>
+            self.Reactive(ComputedFactory, initialCommand, reloadCommand, loadProperty, onError);
 
         public static Computed<LoadingResult<TValue, TError>> Computed<TValue, TError>(
             this IReactiveElement self,
             IObservable<Unit> reloadCommand,
             Func<IObservable<TValue>> loadProperty,
             Func<Exception, TError> onError) =>
-            self.Computed(
-                Unit.Default,
-                reloadCommand,
-                (_) => loadProperty(),
-                onError);
+            self.Reactive(ComputedFactory, reloadCommand, loadProperty, onError);
 
         public static Computed<LoadingResult<TValue, TError>> Computed<TValue, TCommand, TError>(
             this IReactiveElement self,
@@ -275,25 +419,25 @@ namespace DotNetX.Reactive
             IObservable<TCommand?> reloadCommand,
             Func<TCommand?, Task<TValue>> loadProperty,
             Func<Exception, TError> onError) =>
-            self.Computed(
-                initialCommand,
-                reloadCommand,
-                c => Observable.FromAsync(() => loadProperty(c)),
-                onError);
+            self.Reactive(ComputedFactory, initialCommand, reloadCommand, loadProperty, onError);
 
         public static Computed<LoadingResult<TValue, TError>> Computed<TValue, TCommand, TError>(
             this IReactiveElement self,
             IObservable<TCommand?> reloadCommand,
             Func<TCommand?, Task<TValue>> loadProperty,
             Func<Exception, TError> onError) =>
-            self.Computed(default, reloadCommand, loadProperty, onError);
+            self.Reactive(ComputedFactory, reloadCommand, loadProperty, onError);
 
         public static Computed<LoadingResult<TValue, TError>> Computed<TValue, TError>(
             this IReactiveElement self,
             IObservable<Unit> reloadCommand,
             Func<Task<TValue>> loadProperty,
             Func<Exception, TError> onError) =>
-            self.Computed(Unit.Default, reloadCommand, (_) => loadProperty(), onError);
+            self.Reactive(ComputedFactory, reloadCommand, loadProperty, onError);
+
+        #endregion [ Computed ]
+
+        #region [ WhereHasValue ]
 
         public static IObservable<T> WhereHasValue<T>(this IObservable<T?> source)
             where T : struct =>
@@ -309,6 +453,9 @@ namespace DotNetX.Reactive
                     ? v.Singleton().ToObservable()
                     : Observable.Empty<T>());
 
+        #endregion [ WhereHasValue ]
+
+        #region [ TrackModel ]
 
         public static void TrackModel(this IReactiveElement parentModel, IReactiveElement subModel)
         {
@@ -336,6 +483,9 @@ namespace DotNetX.Reactive
             return model;
         }
 
+        #endregion [ TrackModel ]
+
+        #region [ Execute ]
 
         public static async Task Execute<TResponse>(
             this IReactiveElement self,
@@ -479,6 +629,8 @@ namespace DotNetX.Reactive
 
             return self.Execute(isSubmitting, submitError, action, onSuccess, onError);
         }
+        
+        #endregion [ Execute ]
     }
 
 }
