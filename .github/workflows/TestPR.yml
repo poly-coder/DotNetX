@@ -1,0 +1,27 @@
+name: Publish
+
+on:
+  pull_request:
+    branches: [ master ]
+
+env:
+  NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+
+jobs:
+  publish:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    
+    - name: Setup .NET Core
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 5.0.x
+
+    - name: Restore dotnet tools
+      run: dotnet tool restore
+
+    - name: Build and Push Nuget Packages with Cake
+      run: dotnet cake --target=Pack --configuration=Release
