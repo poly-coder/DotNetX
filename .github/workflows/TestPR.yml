@@ -23,5 +23,5 @@ jobs:
     - name: Restore dotnet tools
       run: dotnet tool restore
 
-    - name: Build, Test and Pack
-      run: dotnet cake --target=Pack --configuration=Release
+    - name: Build and Test
+      run: dotnet cake --target=Test --configuration=Release
