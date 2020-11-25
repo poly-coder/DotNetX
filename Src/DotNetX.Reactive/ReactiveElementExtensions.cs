@@ -13,6 +13,35 @@ namespace DotNetX.Reactive
         public static void DeferDispose(this IReactiveElement self, Action dispose) =>
             self.DeferDispose(new Disposable(dispose));
 
+        public static TReactive CreateReactive<T, TReactive>(
+            this IReactiveElement self,
+            IObservable<T> valueStream,
+            Func<IObservable<T>, TReactive> factory)
+            where TReactive : class, IUpdatableElement, IDisposable
+        {
+            if (self is null)
+            {
+                throw new ArgumentNullException(nameof(self));
+            }
+
+            if (valueStream is null)
+            {
+                throw new ArgumentNullException(nameof(valueStream));
+            }
+
+            var reactive = factory(valueStream);
+
+            self.Effect(reactive.ValueChanged, self.StateChanged.Call);
+
+            return self.DeferDispose(reactive);
+        }
+
+        public static Computed<T> RawComputed<T>(
+            this IReactiveElement self,
+            IObservable<T> valueStream) =>
+            self.CreateReactive(valueStream, stream => new Computed<T>(stream));
+
+
         public static IDisposable Effect<T>(this IReactiveElement self, IObservable<T> stream, Action<T> reaction)
         {
             var context = SynchronizationContext.Current;
@@ -78,31 +107,6 @@ namespace DotNetX.Reactive
                 initialValue,
                 fullCoerceValue,
                 comparer);
-        }
-
-        public static Computed<T> RawComputed<T>(
-            this IReactiveElement self,
-            IObservable<T> valueStream)
-        {
-            if (self is null)
-            {
-                throw new ArgumentNullException(nameof(self));
-            }
-
-            if (valueStream is null)
-            {
-                throw new ArgumentNullException(nameof(valueStream));
-            }
-
-            var property = new Computed<T>(valueStream);
-
-            //// Logging
-            //self.Effect(property.Stream, value => 
-            //    Console.WriteLine($"OnComputedChanged: {self.GetType().Name}({value})"));
-
-            self.Effect(property.ValueChanged, self.StateChanged.Call);
-
-            return self.DeferDispose(property);
         }
 
         public static Command<T> Command<T>(this IReactiveElement self)
