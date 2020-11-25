@@ -2,7 +2,7 @@
 {
     public interface ICurrentValueTriggered<T> : IValueTriggered<T>
     {
-        T Value { get; }
+        T? Value { get; }
     }
 
 }

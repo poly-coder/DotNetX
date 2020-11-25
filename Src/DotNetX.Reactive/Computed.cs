@@ -1,14 +1,15 @@
 ﻿using System;
 using System.Reactive;
+using System.Reactive.Linq;
 using System.Reactive.Subjects;
 
 namespace DotNetX.Reactive
 {
     public class Computed<T> : ICurrentValueTriggered<T>, IUpdatableElement, IDisposable
     {
-        private Disposables disposables = new Disposables();
-        private Subject<Unit> valueChanged = new Subject<Unit>();
-        private bool disposedValue;
+        private readonly Disposables disposables = new Disposables();
+        private readonly Subject<Unit> valueChanged = new Subject<Unit>();
+        private bool disposedValue = false;
 
         public Computed(IObservable<T> valueStream)
         {
@@ -24,8 +25,8 @@ namespace DotNetX.Reactive
             disposables.Add(new Disposable(() => valueChanged.OnCompleted()));
         }
 
-        public T Value { get; private set; }
-        public IObservable<T> Stream { get; }
+        public T? Value { get; private set; }
+        public IObservable<T?> Stream { get; }
 
         public IObservable<Unit> ValueChanged => valueChanged.AsObservable();
 

@@ -24,7 +24,7 @@ namespace DotNetX.Reactive
             }
         }
 
-        public static Type AsTypeOrNull(this string typeName)
+        public static Type? AsTypeOrNull(this string typeName)
         {
             try
             {

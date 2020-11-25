@@ -18,7 +18,7 @@ namespace DotNetX.Reactive
             var context = SynchronizationContext.Current;
             if (context != null)
             {
-                stream = stream.ObserveOn(SynchronizationContext.Current);
+                stream = stream.ObserveOn(context);
             }
             return self.DeferDispose(stream.Subscribe(reaction));
         }
@@ -46,43 +46,39 @@ namespace DotNetX.Reactive
 
         public static Property<T> Property<T>(
             this IReactiveElement self,
-            T initialValue,
-            Func<T, T, T> coerceValue,
-            IEqualityComparer<T> comparer = null)
+            T? initialValue,
+            Func<T?, T?, T?>? coerceValue = null,
+            IEqualityComparer<T>? comparer = null)
         {
             if (self is null)
             {
                 throw new ArgumentNullException(nameof(self));
             }
 
-            var property = self.DeferDispose(new Property<T>(initialValue, coerceValue, comparer));
-
-            //// Logging
-            //self.Effect(
-            //    property,
-            //    value => Console.WriteLine($"OnPropertyChanged: {self.GetType().Name}({value})"));
+            var property = self.DeferDispose(
+                new Property<T>(initialValue, coerceValue, comparer));
 
             return property;
         }
 
         public static Property<T> Property<T>(
             this IReactiveElement self,
-            T initialValue,
-            Func<T, T> coerceValue,
-            IEqualityComparer<T> comparer = null) =>
-            self.Property(
-                initialValue,
-                coerceValue != null ? (v, _) => coerceValue(v) : (Func<T, T, T>)null,
-                comparer);
+            T? initialValue,
+            Func<T?, T?>? coerceValue,
+            IEqualityComparer<T>? comparer = null)
+        {
+            Func<T?, T?, T?>? fullCoerceValue = null;
 
-        public static Property<T> Property<T>(
-            this IReactiveElement self,
-            T initialValue,
-            IEqualityComparer<T> comparer = null) =>
-            self.Property(
+            if (coerceValue != null)
+            {
+                fullCoerceValue = (newValue, _current) => coerceValue(newValue);
+            }
+
+            return self.Property(
                 initialValue,
-                (Func<T, T, T>)null,
+                fullCoerceValue,
                 comparer);
+        }
 
         public static Computed<T> RawComputed<T>(
             this IReactiveElement self,
@@ -143,77 +139,77 @@ namespace DotNetX.Reactive
             return command;
         }
 
-        public static Computed<T> Computed<T>(
+        public static Computed<TValue> Computed<TValue>(
             this IReactiveElement self,
-            IObservable<T> source,
-            IEqualityComparer<T> comparer = null)
+            IObservable<TValue> source,
+            IEqualityComparer<TValue>? comparer = null)
         {
             if (comparer != null)
             {
-                source = source.DistinctUntilChanged(comparer ?? EqualityComparer<T>.Default);
+                source = source.DistinctUntilChanged(comparer ?? EqualityComparer<TValue>.Default);
             }
 
             return self.RawComputed(source);
         }
 
-        public static Computed<T> Computed<T, S>(
+        public static Computed<TValue> Computed<TValue, TState>(
             this IReactiveElement self,
-            IObservable<S> source,
-            Func<S, T> select,
-            IEqualityComparer<T> comparer = null) =>
+            IObservable<TState> source,
+            Func<TState, TValue> select,
+            IEqualityComparer<TValue>? comparer = null) =>
             self.Computed(source.Select(select), comparer);
 
-        public static Computed<T> Computed<T, E>(
+        public static Computed<T> Computed<T, TEvent>(
             this IReactiveElement self,
             T initialValue,
-            IObservable<E> events,
-            Func<T, E, T> update,
-            IEqualityComparer<T> comparer = null) =>
+            IObservable<TEvent> events,
+            Func<T, TEvent, T> update,
+            IEqualityComparer<T>? comparer = null) =>
             self.Computed(
                 events
                     .Scan(initialValue, update)
                     .StartWith(initialValue), comparer);
 
-        public static Computed<T> Computed<T>(
+        public static Computed<TValue> Computed<TValue>(
             this IReactiveElement self,
-            T initialValue,
-            IObservable<Func<T, T>> updates,
-            IEqualityComparer<T> comparer = null) =>
+            TValue initialValue,
+            IObservable<Func<TValue, TValue>> updates,
+            IEqualityComparer<TValue>? comparer = null) =>
             self.Computed(
                 updates
                     .Scan(initialValue, (acc, update) => update(acc))
                     .StartWith(initialValue), comparer);
 
-        public static Computed<T> Computed<T, S, E>(
+        public static Computed<TValue> Computed<TValue, TState, TEvent>(
             this IReactiveElement self,
-            S initialState,
-            IObservable<E> events,
-            Func<S, E, S> update,
-            Func<S, T> select,
-            IEqualityComparer<T> comparer = null) =>
+            TState initialState,
+            IObservable<TEvent> events,
+            Func<TState, TEvent, TState> update,
+            Func<TState, TValue> select,
+            IEqualityComparer<TValue>? comparer = null) =>
             self.Computed(
                 events
                     .Scan(initialState, update)
                     .StartWith(initialState)
                     .Select(select), comparer);
 
-        public static Computed<T> Computed<T, S>(
+        public static Computed<TValue> Computed<TValue, TState>(
             this IReactiveElement self,
-            S initialState,
-            IObservable<Func<S, S>> updates,
-            Func<S, T> select,
-            IEqualityComparer<T> comparer = null) =>
+            TState initialState,
+            IObservable<Func<TState, TState>> updates,
+            Func<TState, TValue> select,
+            IEqualityComparer<TValue>? comparer = null) =>
             self.Computed(
                 updates
                     .Scan(initialState, (acc, update) => update(acc))
                     .StartWith(initialState)
                     .Select(select), comparer);
 
-        public static Computed<LoadingResult<T, TError>> Computed<T, C, TError>(
+        public static Computed<LoadingResult<TValue, TError>> Computed<TValue, TCommand, TError>(
             this IReactiveElement self,
-            C initialCommand,
-            IObservable<C> reloadCommand,
-            Func<C, IObservable<T>> loadProperty,
+            TCommand? initialCommand,
+            IObservable<TCommand?> reloadCommand,
+            Func<TCommand?, IObservable<TValue>> loadProperty,
             Func<Exception, TError> onError)
         {
             var updates = reloadCommand
@@ -222,26 +218,26 @@ namespace DotNetX.Reactive
                     loadProperty(command)
                         .LastAsync()
                         .Materialize()
-                        .Select<Notification<T>, Func<LoadingResult<T, TError>, LoadingResult<T, TError>>>(notification =>
+                        .Select<Notification<TValue>, Func<LoadingResult<TValue, TError>, LoadingResult<TValue, TError>>>(notification =>
                         {
                             switch (notification.Kind)
                             {
                                 case NotificationKind.OnNext:
                                     {
-                                        LoadingResult<T, TError> Update(LoadingResult<T, TError> previous) =>
+                                        LoadingResult<TValue, TError> Update(LoadingResult<TValue, TError> previous) =>
                                             previous.SetValue(notification.Value);
                                         return Update;
 
                                     }
                                 case NotificationKind.OnError:
                                     {
-                                        LoadingResult<T, TError> Update(LoadingResult<T, TError> previous) =>
+                                        LoadingResult<TValue, TError> Update(LoadingResult<TValue, TError> previous) =>
                                             previous.SetError(onError(notification.Exception!));
                                         return Update;
                                     }
                                 default:
                                     {
-                                        LoadingResult<T, TError> Update(LoadingResult<T, TError> previous) =>
+                                        LoadingResult<TValue, TError> Update(LoadingResult<TValue, TError> previous) =>
                                             previous;
                                         return Update;
                                     }
@@ -254,14 +250,14 @@ namespace DotNetX.Reactive
             self.DeferDispose(updates.Connect());
 
             return self.Computed(
-                LoadingResult.Create<T, TError>().StartLoading(),
+                LoadingResult.Create<TValue, TError>().StartLoading(),
                 updates);
         }
 
-        public static Computed<LoadingResult<T, TError>> Computed<T, TError>(
+        public static Computed<LoadingResult<TValue, TError>> Computed<TValue, TError>(
             this IReactiveElement self,
             IObservable<Unit> reloadCommand,
-            Func<IObservable<T>> loadProperty,
+            Func<IObservable<TValue>> loadProperty,
             Func<Exception, TError> onError) =>
             self.Computed(
                 Unit.Default,
@@ -269,11 +265,11 @@ namespace DotNetX.Reactive
                 (_) => loadProperty(),
                 onError);
 
-        public static Computed<LoadingResult<T, TError>> Computed<T, C, TError>(
+        public static Computed<LoadingResult<TValue, TError>> Computed<TValue, TCommand, TError>(
             this IReactiveElement self,
-            C initialCommand,
-            IObservable<C> reloadCommand,
-            Func<C, Task<T>> loadProperty,
+            TCommand? initialCommand,
+            IObservable<TCommand?> reloadCommand,
+            Func<TCommand?, Task<TValue>> loadProperty,
             Func<Exception, TError> onError) =>
             self.Computed(
                 initialCommand,
@@ -281,18 +277,18 @@ namespace DotNetX.Reactive
                 c => Observable.FromAsync(() => loadProperty(c)),
                 onError);
 
-        public static Computed<LoadingResult<T, TError>> Computed<T, C, TError>(
+        public static Computed<LoadingResult<TValue, TError>> Computed<TValue, TCommand, TError>(
             this IReactiveElement self,
-            IObservable<C> reloadCommand,
-            Func<C, Task<T>> loadProperty,
+            IObservable<TCommand?> reloadCommand,
+            Func<TCommand?, Task<TValue>> loadProperty,
             Func<Exception, TError> onError) =>
             self.Computed(default, reloadCommand, loadProperty, onError);
 
-        public static Computed<LoadingResult<T, TError>> Computed<T, TError>(
+        public static Computed<LoadingResult<TValue, TError>> Computed<TValue, TError>(
             this IReactiveElement self,
             IObservable<Unit> reloadCommand,
-            Func<Task<T>> loadProperty,
-            Func<Exception, TError> onError = null) =>
+            Func<Task<TValue>> loadProperty,
+            Func<Exception, TError> onError) =>
             self.Computed(Unit.Default, reloadCommand, (_) => loadProperty(), onError);
 
         public static IObservable<T> WhereHasValue<T>(this IObservable<T?> source)
@@ -340,10 +336,10 @@ namespace DotNetX.Reactive
         public static async Task Execute<TResponse>(
             this IReactiveElement self,
             Property<bool> isSubmitting,
-            Property<Exception> submitError,
+            Property<Exception?> submitError,
             Func<Task<TResponse>> action,
-            Func<TResponse, Task> onSuccess = null,
-            Func<Exception, Task> onError = null)
+            Func<TResponse, Task>? onSuccess = null,
+            Func<Exception, Task>? onError = null)
         {
             if (self is null)
             {
@@ -396,73 +392,89 @@ namespace DotNetX.Reactive
         public static Task Execute<TResponse>(
             this IReactiveElement self,
             Property<bool> isSubmitting,
-            Property<Exception> submitError,
+            Property<Exception?> submitError,
             Func<Task<TResponse>> action,
-            Action<TResponse> onSuccessSync,
-            Action<Exception> onErrorSync = null) =>
-            self.Execute(
-                isSubmitting,
-                submitError,
-                action,
-                onSuccessSync != null
-                    ? r =>
-                    {
-                        onSuccessSync(r);
-                        return Task.CompletedTask;
-                    }
-        : (Func<TResponse, Task>)null,
-                onErrorSync != null
-                    ? ex =>
-                    {
-                        onErrorSync(ex);
-                        return Task.CompletedTask;
-                    }
-        : (Func<Exception, Task>)null);
+            Action<TResponse>? onSuccessSync,
+            Action<Exception>? onErrorSync = null)
+        {
+            Func<TResponse, Task>? onSuccess = null;
+            Func<Exception, Task>? onError = null;
 
-        public static Task Execute(
-            this IReactiveElement self,
-            Property<bool> isSubmitting,
-            Property<Exception> submitError,
-            Func<Task> action,
-            Func<Task> onSuccess = null,
-            Func<Exception, Task> onError = null) =>
-            self.Execute(
-                isSubmitting,
-                submitError,
-                async () =>
+            if (onSuccessSync != null)
+            {
+                onSuccess = response =>
                 {
-                    await action();
-                    return true;
-                },
-                onSuccess != null ? _ => onSuccess() : (Func<bool, Task>)null,
-                onError);
+                    onSuccessSync(response);
+                    return Task.CompletedTask;
+                };
+            }
+
+            if (onErrorSync != null)
+            {
+                onError = (exception) =>
+                {
+                    onErrorSync(exception);
+                    return Task.CompletedTask;
+                };
+            }
+
+            return self.Execute(isSubmitting, submitError, action, onSuccess, onError);
+        }
 
         public static Task Execute(
             this IReactiveElement self,
             Property<bool> isSubmitting,
-            Property<Exception> submitError,
+            Property<Exception?> submitError,
             Func<Task> action,
-            Action onSuccessSync,
-            Action<Exception> onErrorSync = null) =>
-            self.Execute(
-                isSubmitting,
-                submitError,
-                action,
-                onSuccessSync != null
-                    ? () =>
-                    {
-                        onSuccessSync();
-                        return Task.CompletedTask;
-                    }
-        : (Func<Task>)null,
-                onErrorSync != null
-                    ? ex =>
-                    {
-                        onErrorSync(ex);
-                        return Task.CompletedTask;
-                    }
-        : (Func<Exception, Task>)null);
+            Func<Task>? onSuccess = null,
+            Func<Exception, Task>? onError = null)
+        {
+            async Task<bool> BoolAction()
+            {
+                await action();
+                return true;
+            }
 
+            Func<bool, Task>? onBoolSuccess = null;
+            if (onSuccess != null)
+            {
+                onBoolSuccess = _ => onSuccess();
+            }
+
+            return self.Execute(isSubmitting, submitError, BoolAction, onBoolSuccess, onError);
+        }
+
+        public static Task Execute(
+            this IReactiveElement self,
+            Property<bool> isSubmitting,
+            Property<Exception?> submitError,
+            Func<Task> action,
+            Action? onSuccessSync,
+            Action<Exception>? onErrorSync = null)
+        {
+            Func<Task>? onSuccess = null;
+            Func<Exception, Task>? onError = null;
+
+            if (onSuccessSync != null)
+            {
+                onSuccess = () =>
+                {
+                    onSuccessSync();
+                    return Task.CompletedTask;
+                };
+            }
+
+            if (onErrorSync != null)
+            {
+                onError = (exception) =>
+                {
+                    onErrorSync(exception);
+                    return Task.CompletedTask;
+                };
+            }
+
+            return self.Execute(isSubmitting, submitError, action, onSuccess, onError);
+        }
     }
 
 }

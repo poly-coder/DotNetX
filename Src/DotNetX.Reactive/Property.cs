@@ -8,18 +8,18 @@ namespace DotNetX.Reactive
 {
     public class Property<T> : ICurrentValueTriggered<T>, IUpdatableElement, IDisposable
     {
-        private Disposables disposables = new Disposables();
-        private BehaviorSubject<T> stream;
-        private bool disposedValue;
-        private Func<T, T, T>? coerceValue;
+        private readonly Disposables disposables = new Disposables();
+        private readonly BehaviorSubject<T> stream;
+        private bool disposedValue = false;
+        private readonly Func<T?, T?, T?>? coerceValue;
 
-        public Property(T initialValue, Func<T, T, T>? coerceValue = null, IEqualityComparer<T>? comparer = null)
+        public Property(T? initialValue, Func<T?, T?, T?>? coerceValue = null, IEqualityComparer<T>? comparer = null)
         {
             this.Value = initialValue;
 
             this.coerceValue = coerceValue;
 
-            stream = new BehaviorSubject<T>(CoerceValue(initialValue));
+            stream = new BehaviorSubject<T>(CoerceValue(initialValue)!);
 
             ValueChanged = stream
                 .DistinctUntilChanged(comparer.OrDefault())
@@ -30,18 +30,18 @@ namespace DotNetX.Reactive
             disposables.Add(new Disposable(() => stream.OnCompleted()));
         }
 
-        public T Value { get; private set; }
+        public T? Value { get; private set; }
 
-        public IObservable<T> Stream => stream.AsObservable();
+        public IObservable<T?> Stream => stream.AsObservable();
 
         public void Set(T value)
         {
-            stream.OnNext(CoerceValue(value));
+            stream.OnNext(CoerceValue(value)!);
         }
 
         public IObservable<Unit> ValueChanged { get; }
 
-        protected T CoerceValue(T value)
+        protected T? CoerceValue(T? value)
         {
             if (coerceValue != null)
             {
