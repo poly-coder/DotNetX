@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net5.0</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <RootNamespace>DotNetX.Reactive</RootNamespace>
+    <PackageId>DotNetX.Reactive</PackageId>
+    <Version>0.0.1</Version>
+    <Authors>Iskander Sierra</Authors>
+    <Company>PolyCoder</Company>
+    <Product>PolyCoder CSharp Framework</Product>
+    <Description>Classes to define reactive View Models, to be used in any stateful environment</Description>
+    <PackageProjectUrl>https://github.com/poly-coder/DotNetX</PackageProjectUrl>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <AssemblyName>DotNetX.Reactive</AssemblyName>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Reactive" Version="5.0.0" />
+    <PackageReference Include="System.Reactive.Linq" Version="5.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DotNetX.Extensions\DotNetX.Extensions.csproj" />
+    <ProjectReference Include="..\DotNetX\DotNetX.csproj" />
+  </ItemGroup>
+
+</Project>

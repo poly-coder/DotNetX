@@ -1,14 +1,14 @@
 name: Publish
 
 on:
-  push:
+  pull_request:
     branches: [ master ]
 
 env:
   NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
 
 jobs:
-  publish:
+  testPR:
 
     runs-on: ubuntu-latest
 
@@ -23,5 +23,5 @@ jobs:
     - name: Restore dotnet tools
       run: dotnet tool restore
 
-    - name: Build, Test and Push
-      run: dotnet cake --target=Push --configuration=Release
+    - name: Build, Test and Pack
+      run: dotnet cake --target=Pack --configuration=Release
