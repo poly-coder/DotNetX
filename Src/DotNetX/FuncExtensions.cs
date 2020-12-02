@@ -60,12 +60,12 @@ namespace DotNetX
         }
 
         public static Func<ValueTask<T>> AsValueTask<T>(this Func<T> func) => ()
-            => new ValueTask<T>(func());
+            => func().AsValueTaskResult();
 
         public static Func<A, ValueTask<T>> AsValueTaskResult<A, T>(this Func<A, T> func) =>
-            (A a) => new ValueTask<T>(func(a));
+            (A a) => func(a).AsValueTaskResult();
 
         public static Func<A, Task<T>> AsTaskResult<A, T>(this Func<A, T> func) =>
-            (A a) => Task.FromResult(func(a));
+            (A a) => func(a).AsTaskResult();
     }
 }
