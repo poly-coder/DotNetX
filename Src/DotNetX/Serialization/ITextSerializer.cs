@@ -4,10 +4,12 @@ namespace DotNetX.Serialization
 {
     public interface ITextSerializer
     {
-        string Serialize<T>(T value);
-        string Serialize(Type type, object value);
+        public string Serialize<T>(T? value) => Serialize(typeof(T), value);
 
-        T Deserialize<T>(string text);
-        object Deserialize(Type type, string text);
+        string Serialize(Type type, object? value);
+
+        T? Deserialize<T>(string text) => (T)Deserialize(typeof(T), text);
+
+        object? Deserialize(Type type, string text);
     }
 }
