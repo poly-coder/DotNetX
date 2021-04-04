@@ -470,5 +470,117 @@ namespace DotNetX.Reflection
 
         #endregion [ ExportedTypes / ConcreteClassesImplementing / ... ]
 
+
+        #region [ InvokeWith ]
+        
+        private static object?[] ExtractInvokeParameters(
+            MethodBase method,
+            IServiceProvider? serviceProvider = null,
+            IReadOnlyCollection<object>? instances = null,
+            IReadOnlyDictionary<string, object>? namedInstances = null)
+        {
+            var args = method.GetParameters();
+
+            return args.Select(p => GetValueFor(p)).ToArray();
+
+            object? GetValueFor(ParameterInfo p)
+            {
+                var type = p.ParameterType;
+
+                if (p.Name != null && 
+                    namedInstances != null && 
+                    namedInstances.TryGetValue(p.Name, out var namedInstanceValue))
+                {
+                    if (namedInstanceValue != null && !type.IsAssignableFrom(namedInstanceValue.GetType()))
+                    {
+                        throw new ArgumentException(
+                            $"Found a named instance for '{p.Name}' with expected type '{type.Name}' but actual type '{namedInstanceValue.GetType().Name}'");
+                    }
+
+                    return namedInstanceValue;
+                }
+
+                var instanceValue = instances != null 
+                    ?  instances.FirstOrDefault(e => type.IsAssignableFrom(e.GetType()))
+                    : null;
+
+                if (instanceValue != null)
+                {
+                    return instanceValue;
+                }
+
+                var serviceValue = serviceProvider?.GetService(type);
+
+                if (serviceValue != null)
+                {
+                    return serviceValue;
+                }
+
+                if (!p.IsOptional)
+                {
+                    throw new ArgumentException(
+                        $"Could not find a value for parameter '{p.Name}' with type '{type.Name}'");
+                }
+
+                return null;
+            }
+        }
+
+        public static object? InvokeStaticWith(
+            this MethodInfo method, 
+            IServiceProvider? serviceProvider = null,
+            IReadOnlyCollection<object>? instances = null,
+            IReadOnlyDictionary<string, object>? namedInstances = null)
+        {
+            var parameters = ExtractInvokeParameters(method, serviceProvider, instances, namedInstances);
+
+            return method.Invoke(null, parameters);
+        }
+        
+        public static object? InvokeWith(
+            this MethodInfo method, 
+            object instance,
+            IServiceProvider? serviceProvider = null,
+            IReadOnlyCollection<object>? instances = null,
+            IReadOnlyDictionary<string, object>? namedInstances = null)
+        {
+            var parameters = ExtractInvokeParameters(method, serviceProvider, instances, namedInstances);
+
+            return method.Invoke(instance, parameters);
+        }
+
+        public static object InvokeStaticWith(
+            this MethodInfo method, 
+            IServiceProvider? serviceProvider,
+            params object[] instances)
+        {
+            return InvokeStaticWith(method, serviceProvider: serviceProvider, instances: instances);
+        }
+
+        public static object InvokeStaticWith(
+            this MethodInfo method, 
+            params object[] instances)
+        {
+            return InvokeStaticWith(method, serviceProvider: null, instances: instances);
+        }
+
+        public static object InvokeWith(
+            this MethodInfo method,
+            object instance,
+            IServiceProvider? serviceProvider,
+            params object[] instances)
+        {
+            return InvokeWith(method, instance, serviceProvider: serviceProvider, instances: instances);
+        }
+
+        public static object InvokeWith(
+            this MethodInfo method,
+            object instance,
+            params object[] instances)
+        {
+            return InvokeWith(method, instance, serviceProvider: null, instances: instances);
+        }
+
+        #endregion [ InvokeWith ]
     }
 }

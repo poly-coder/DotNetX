@@ -178,5 +178,18 @@ namespace DotNetX
                 v => v.Singleton(),
                 () => Enumerable.Empty<T>());
         }
+
+        public static Optional<T> FirstSome<T>(this IEnumerable<Optional<T>> optionals)
+        {
+            foreach (var item in optionals)
+            {
+                if (item.isSome)
+                {
+                    return item;
+                }
+            }
+
+            return None<T>();
+        }
     }
 }

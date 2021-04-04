@@ -364,5 +364,88 @@ namespace DotNetX.Tests
 
         #endregion [ Graph Traversal ]
 
+
+        #region [ Cached ]
+
+        [Test]
+        public void CachedShouldThrowOnNullSource()
+        {
+            // Given
+            IEnumerable<int> source = null!;
+            
+            // When 
+            Action action = () => source.Cached();
+
+            // Then
+            action.Should().Throw<ArgumentNullException>();
+        }
+
+        [Test]
+        public void CachedShouldReturnOriginalSource()
+        {
+            // Given
+            IEnumerable<int> source = Enumerable.Range(1, 10);
+            
+            // When 
+            var cached = source.Cached();
+
+            // Then
+            cached.Should().Equal(source);
+        }
+
+        [Test]
+        public void CachedShouldTakeOnlyNeccesaryItems()
+        {
+            // Given
+            int counter = 0;
+            IEnumerable<int> source = Enumerable.Range(1, 10).Do(_ => counter++);
+            
+            // When 
+            var cached = source.Cached();
+
+            // Then
+            counter.Should().Be(0);
+            cached.Take(3).Should().Equal(Enumerable.Range(1, 3));
+            counter.Should().Be(3);
+        }
+
+        [Test]
+        public void CachedShouldTakeItemsOnceWhenIteratedMultipleTimes()
+        {
+            // Given
+            int counter = 0;
+            IEnumerable<int> source = Enumerable.Range(1, 10).Do(i => counter++);
+            
+            // When 
+            var cached = source.Cached();
+
+            // Then
+            counter.Should().Be(0);
+            cached.Take(3).Should().Equal(Enumerable.Range(1, 3));
+            cached.Take(4).Should().Equal(Enumerable.Range(1, 4));
+            cached.Take(5).Should().Equal(Enumerable.Range(1, 5));
+            counter.Should().Be(5);
+        }
+
+        [Test]
+        public void CachedShouldTakeItemsOnceWhenIteratedToTheEndMultipleTimes()
+        {
+            // Given
+            int counter = 0;
+            IEnumerable<int> source = Enumerable.Range(1, 10).Do(i => counter++);
+            
+            // When 
+            var cached = source.Cached();
+
+            // Then
+            counter.Should().Be(0);
+            cached.Should().Equal(Enumerable.Range(1, 10));
+            counter.Should().Be(10);
+            cached.Should().Equal(Enumerable.Range(1, 10));
+            counter.Should().Be(10);
+        }
+
+        #endregion [ Cached ]
+
     }
 }

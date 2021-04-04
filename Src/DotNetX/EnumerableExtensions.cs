@@ -49,6 +49,29 @@ namespace DotNetX
         #endregion [ Concatenate ]
 
 
+        #region [ Do ]
+
+        public static IEnumerable<T> Do<T>(this IEnumerable<T> source, Action<T> action)
+        {
+            if (source is null)
+            {
+                throw new ArgumentNullException(nameof(source));
+            }
+
+            if (action is null)
+            {
+                throw new ArgumentNullException(nameof(action));
+            }
+
+            return source.Select(e =>
+            {
+                action(e);
+                return e;
+            });
+        }
+
+        #endregion [ Do ]
+
         #region [ ForEach ]
 
         public static void ForEach<T>(this IEnumerable<T> source, Action<T> action)
@@ -97,6 +120,32 @@ namespace DotNetX
             Func<T, Task> action,
             CancellationToken cancellationToken = default) =>
             source.ForEachAsync(
+                (v, _ct) => action(v),
+                cancellationToken);
+
+        public static async Task ParallelForEachAsync<T>(
+            this IEnumerable<T> source, 
+            Func<T, CancellationToken, Task> action, 
+            CancellationToken cancellationToken = default)
+        {
+            if (source is null)
+            {
+                throw new ArgumentNullException(nameof(source));
+            }
+
+            if (action is null)
+            {
+                throw new ArgumentNullException(nameof(action));
+            }
+
+            await Task.WhenAll(source.Select(item => action(item, cancellationToken)));
+        }
+
+        public static Task ParallelForEachAsync<T>(
+            this IEnumerable<T> source,
+            Func<T, Task> action,
+            CancellationToken cancellationToken = default) =>
+            source.ParallelForEachAsync(
                 (v, _ct) => action(v),
                 cancellationToken);
 
@@ -629,6 +678,124 @@ namespace DotNetX
         }
 
         #endregion
+
+
+        #region [ AllPairs ]
+        
+        public static IEnumerable<(T current, T next)> AllPairs<T>(this IEnumerable<T> source)
+        {
+            var first = true;
+            var previous = default(T)!;
+
+            foreach (var current in source)
+            {
+                if (first)
+                {
+                    first = false;
+                }
+                else
+                {
+                    yield return (previous, current);
+                }
+
+                previous = current;
+            }
+        }
+
+        #endregion [ AllPairs ]
+
+
+        #region [ IsSorted / Descending ]
+
+        public static bool IsSorted<T>(this IEnumerable<T> source, IComparer<T>? comparer = null, bool allowEquals = true)
+        {
+            comparer ??= Comparer<T>.Default;
+
+            bool IsSorted(T a, T b)
+            {
+                var comparison = comparer.Compare(a, b);
+
+                return comparison < 0 || comparison == 0 && allowEquals;
+            }
+
+            return source
+                .AllPairs()
+                .All(p => IsSorted(p.current, p.next));
+        }
+
+        public static bool IsSortedDescending<T>(this IEnumerable<T> source, IComparer<T>? comparer = null, bool allowEquals = true)
+        {
+            comparer ??= Comparer<T>.Default;
+
+            bool IsSorted(T a, T b)
+            {
+                var comparison = comparer.Compare(a, b);
+
+                return comparison > 0 || comparison == 0 && allowEquals;
+            }
+
+            return source
+                .AllPairs()
+                .All(p => IsSorted(p.current, p.next));
+        }
+
+        #endregion [ IsSorted / Descending ]
+
+
+        #region [ Cached ]
+        
+        public static IEnumerable<T> Cached<T>(this IEnumerable<T> source)
+        {
+            if (source is null)
+            {
+                throw new ArgumentNullException(nameof(source));
+            }
+
+            List<T>? cached = null;
+            bool hasMore = true;
+            IEnumerator<T>? enumerator = null;
+
+            IEnumerable<T> CachedSource()
+            {
+                // Go through cached items first
+
+                if (cached != null && cached.Count > 0)
+                {
+                    foreach (var item in cached)
+                    {
+                        yield return item;
+                    }
+                }
+
+                if (!hasMore)
+                {
+                    yield break;
+                }
+
+                // Keep extracting items from the original source
+
+                enumerator ??= source.GetEnumerator();
+
+                while (hasMore = enumerator.MoveNext())
+                {
+                    var current = enumerator.Current;
+                    
+                    cached ??= new List<T>();
+
+                    cached.Add(current);
+
+                    yield return current;
+                }
+
+                hasMore = false;
+
+                enumerator.Dispose();
+            }
+
+            return CachedSource();
+        }
+        
+        #endregion [ Cached ]
     }
 
     public class StructuralEnumerableEqualityComparer<T> : IEqualityComparer<IEnumerable<T>>, IEqualityComparer
