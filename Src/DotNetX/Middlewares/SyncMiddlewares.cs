@@ -2,15 +2,13 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace DotNetX.Midlewares
+namespace DotNetX.Middlewares
 {
     // Sync Middlewares
 
     public delegate TResult SyncMiddlewareFunc<TContext, TResult>(TContext context);
     
     public delegate TResult SyncMiddleware<TContext, TResult>(TContext context, SyncMiddlewareFunc<TContext, TResult> next);
-
-    // public delegate SyncMiddlewareNextFunc<TContext, TResult> SyncMiddleware<TContext, TResult>(SyncMiddlewareNextFunc<TContext, TResult> innerFunc);
 
     public static class SyncMiddleware
     {
@@ -81,7 +79,7 @@ namespace DotNetX.Midlewares
         public static SyncMiddleware<TContext, TResult> Choose<TContext, TResult>(
             this IEnumerable<SyncMiddleware<TContext, TResult>> choices,
             Func<TResult, TContext, bool> wasChosen,
-            SyncMiddlewareFunc<TContext, TResult> defaultAction) =>
+            SyncMiddleware<TContext, TResult> defaultAction) =>
             (context, next) =>
             {
                 foreach (var middleware in choices)
@@ -94,7 +92,7 @@ namespace DotNetX.Midlewares
                     }
                 }
 
-                return defaultAction(context);
+                return defaultAction(context, next);
             };
     }
 }

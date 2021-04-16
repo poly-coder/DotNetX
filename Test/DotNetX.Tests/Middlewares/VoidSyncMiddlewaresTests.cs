@@ -13,48 +13,8 @@ using PropertyAttribute = FsCheck.NUnit.PropertyAttribute;
 namespace DotNetX.Tests.Middlewares
 {
     [TestFixture]
-    public class SyncMiddlewaresTests
+    public class VoidSyncMiddlewaresTests
     {
-        #region [ Constants ]
-
-        [Test]
-        public void ConstantFuncWithAResultShouldAlwaysReturnTheSameGivenAnyInput()
-        {
-            Prop
-                .ForAll<int, NonEmptyString>((input, result) =>
-                {
-                    // Given
-                    var middlewareFunc = SyncMiddleware.ConstantFunc<int, string>(result.Get);
-
-                    // When
-                    var actualResult = middlewareFunc(input);
-
-                    // Then 
-                    actualResult.Should().Be(result.Get);
-                })
-                .QuickCheckThrowOnFailure();
-        }
-
-        [Test]
-        public void ConstantShouldAlwaysReturnTheSameGivenAnyInputAndNext()
-        {
-            Prop
-                .ForAll<int, NonEmptyString, string>((input, result, otherResult) =>
-                {
-                    // Given
-                    var middleware = SyncMiddleware.Constant<int, string>(result.Get);
-
-                    // When
-                    var actualResult = middleware(input, _ => otherResult);
-
-                    // Then 
-                    actualResult.Should().Be(result.Get);
-                })
-                .QuickCheckThrowOnFailure();
-        }
-
-        #endregion [ Constants ]
-
         #region [ Combine ]
 
         [Test]
@@ -63,28 +23,25 @@ namespace DotNetX.Tests.Middlewares
             // Given
             var calls = new List<string>();
             
-            SyncMiddlewareFunc<string, int> func = str =>
+            VoidSyncMiddlewareFunc<string> func = str =>
             {
-                calls.Add("Func");
-                return str.Length;
+                calls.Add($"Func: {str}");
             };
 
-            SyncMiddleware<string, int> middleware = (str, next) =>
+            VoidSyncMiddleware<string> middleware = (str, next) =>
             {
-                calls.Add("Before");
-                var result = next(str);
-                calls.Add("After");
-                return result;
+                calls.Add($"Before: {str}");
+                next(str);
+                calls.Add($"After: {str}");
             };
 
-            var context = "Hello world!";
+            var context = "Hello";
 
             // When
-            var result = func.Combine(middleware)(context);
+            func.Combine(middleware)(context);
 
             // Then
-            result.Should().Be(context.Length);
-            calls.Should().Equal("Before", "Func", "After");
+            calls.Should().Equal("Before: Hello", "Func: Hello", "After: Hello");
         }
 
         [Test]
@@ -93,28 +50,25 @@ namespace DotNetX.Tests.Middlewares
             // Given
             var calls = new List<string>();
 
-            SyncMiddlewareFunc<string, int> func = str =>
+            VoidSyncMiddlewareFunc<string> func = str =>
             {
-                calls.Add("Func");
-                return str.Length;
+                calls.Add($"Func: {str}");
             };
 
-            SyncMiddleware<string, int> middleware = (str, next) =>
+            VoidSyncMiddleware<string> middleware = (str, next) =>
             {
-                calls.Add("Before");
-                var result = next(str);
-                calls.Add("After");
-                return result;
+                calls.Add($"Before: {str}");
+                next(str);
+                calls.Add($"After: {str}");
             };
 
-            var context = "Hello world!";
+            var context = "Hello";
 
             // When
-            var result = middleware.Combine(func)(context);
+            middleware.Combine(func)(context);
 
             // Then
-            result.Should().Be(context.Length);
-            calls.Should().Equal("Before", "Func", "After");
+            calls.Should().Equal("Before: Hello", "Func: Hello", "After: Hello");
         }
 
         #endregion [ Combine ]
@@ -126,21 +80,19 @@ namespace DotNetX.Tests.Middlewares
         {
             // Given
             var calls = new List<string>();
-            
-            SyncMiddlewareFunc<string, int> func = str =>
+
+            VoidSyncMiddlewareFunc<string> func = str =>
             {
                 calls.Add("Func");
-                return str.Length;
             };
 
-            SyncMiddleware<string, int> MakeMiddleware(int count)
+            VoidSyncMiddleware<string> MakeMiddleware(int count)
             {
                 return (str, next) =>
                 {
                     calls!.Add("Before" + count);
-                    var result = next(str);
+                    next(str);
                     calls.Add("After" + count);
-                    return result;
                 };
             }
 
@@ -152,10 +104,9 @@ namespace DotNetX.Tests.Middlewares
 
             // When
             var middleware = middleware1.Compose(middleware2, middleware3);
-            var result = func.Combine(middleware)(context);
+            func.Combine(middleware)(context);
 
             // Then
-            result.Should().Be(context.Length);
             calls.Should().Equal("Before1", "Before2", "Before3", "Func", "After3", "After2", "After1");
         }
 
@@ -170,7 +121,8 @@ namespace DotNetX.Tests.Middlewares
                 .ForAll<int>(input =>
                 {
                     // Given
-                    var middleware = SyncMiddleware.Switch<int, int>(
+                    var calls = new List<int>();
+                    var middleware = VoidSyncMiddleware.Switch<int>(
                         input =>
                             input switch
                             {
@@ -179,10 +131,17 @@ namespace DotNetX.Tests.Middlewares
                             });
 
                     // When
-                    var result = middleware.Combine(i => i)(input);
+                    middleware.Combine(i => calls.Add(i))(input);
 
-                    // Then 
-                    (result % 2).Should().Be(0);
+                    // Then
+                    if (input % 2 != 0)
+                    {
+                        calls.Should().Equal(input + 1);
+                    }
+                    else
+                    {
+                        calls.Should().Equal(input);
+                    }
                 })
                 .QuickCheckThrowOnFailure();
         }
@@ -190,6 +149,12 @@ namespace DotNetX.Tests.Middlewares
         #endregion [ Switch ]
 
         #region [ Choose ]
+
+        class IntContext
+        {
+            public int Value;
+            public bool Accepted;
+        }
 
         [Test]
         public void ChooseShouldCallTheMiddlewareThatIsChosen()
@@ -199,60 +164,57 @@ namespace DotNetX.Tests.Middlewares
                 {
                     // Given
                     var calls = new List<string>();
+                    var context = new IntContext { Value = input.Get };
 
-                    var middleware = 
-                        new SyncMiddleware<int, string>[]
+                    var middleware =
+                        new VoidSyncMiddleware<IntContext>[]
                         {
                             // middleware1
-                            (input, next) =>
+                            (ctx, next) =>
                             {
                                 calls.Add("Before1");
-                                if (input % 2 == 1)
+                                if (ctx.Value % 2 == 1)
                                 {
-                                    var result = next(input);
+                                    next(ctx);
                                     calls.Add("After1");
-                                    return result;
                                 }
-                                return "";
                             },
                             // middleware2
-                            (input, next) =>
+                            (ctx, next) =>
                             {
                                 calls.Add("Before2");
-                                if (input % 2 == 0)
+                                if (ctx.Value % 2 == 0)
                                 {
-                                    var result = next(input);
+                                    next(ctx);
                                     calls.Add("After2");
-                                    return result;
                                 }
-                                return "";
                             },
                         }
                         .Choose(
-                            wasChosen: (result, _) => !string.IsNullOrEmpty(result),
+                            wasChosen: ctx => ctx.Accepted,
                             defaultAction: (input, next) =>
                             {
                                 calls.Add("Default");
-                                return "Default";
                             });
 
                     // When
-                    var result = middleware
-                        .Combine(input =>
+                    middleware
+                        .Combine(ctx =>
                         {
                             calls.Add("Func");
-                            return "Func";
+                            ctx.Accepted = true;
                         })
-                        (input.Get);
+                        (context);
 
                     // Then
-                    result.Should().Be("Func");
                     if (input.Get % 2 == 1)
                     {
+                        context.Accepted.Should().BeTrue();
                         calls.Should().Equal("Before1", "Func", "After1");
                     }
                     else
                     {
+                        context.Accepted.Should().BeTrue();
                         calls.Should().Equal("Before1", "Before2", "Func", "After2");
                     }
                 })
@@ -267,45 +229,41 @@ namespace DotNetX.Tests.Middlewares
                 {
                     // Given
                     var calls = new List<string>();
+                    var context = new IntContext { Value = input.Get };
 
                     var middleware =
-                        new SyncMiddleware<int, string>[]
+                        new VoidSyncMiddleware<IntContext>[]
                         {
                             // middleware1
-                            (input, next) =>
+                            (ctx, next) =>
                             {
                                 calls.Add("Before1");
-                                return "";
                             },
                             // middleware2
-                            (input, next) =>
+                            (ctx, next) =>
                             {
                                 calls.Add("Before2");
-                                return "";
                             },
                         }
                         .Choose(
-                            wasChosen: (result, _) => !string.IsNullOrEmpty(result),
+                            wasChosen: ctx => ctx.Accepted,
                             defaultAction: (input, next) =>
                             {
-                                calls.Add("BeforeDefault");
-                                var result = next(input);
-                                calls.Add("AfterDefault");
-                                return result;
+                                calls.Add("Default");
                             });
 
                     // When
-                    var result = middleware
-                        .Combine(input =>
+                    middleware
+                        .Combine(ctx =>
                         {
                             calls.Add("Func");
-                            return "Func";
+                            ctx.Accepted = true;
                         })
-                        (input.Get);
+                        (context);
 
                     // Then
-                    result.Should().Be("Func");
-                    calls.Should().Equal("Before1", "Before2", "BeforeDefault", "Func", "AfterDefault");
+                    context.Accepted.Should().BeFalse();
+                    calls.Should().Equal("Before1", "Before2", "Default");
                 })
                 .QuickCheckThrowOnFailure();
         }
