@@ -12,7 +12,6 @@ namespace DotNetX.Middlewares
 
     public static class VoidSyncMiddleware
     {
-
         // Combine a Func with a Middleware
 
         public static VoidSyncMiddlewareFunc<TContext> Combine<TContext>(
