@@ -13,7 +13,7 @@ namespace DotNetX
             Task.FromException<T>(exception);
 
         
-        public static async Task<B> Select<A, B>(this Task<A> sourceTask, Func<A, Task<B>> select)
+        public static async Task<B> SelectMany<A, B>(this Task<A> sourceTask, Func<A, Task<B>> select)
         {
             var source = await sourceTask;
 

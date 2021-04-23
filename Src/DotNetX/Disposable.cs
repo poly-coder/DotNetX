@@ -11,7 +11,7 @@ namespace DotNetX
 
         public Disposable(Action dispose, Action? disposeUnmanaged = null)
         {
-            this.dispose = dispose;
+            this.dispose = dispose ?? throw new ArgumentNullException(nameof(dispose));
             this.disposeUnmanaged = disposeUnmanaged;
         }
 

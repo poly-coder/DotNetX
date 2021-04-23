@@ -35,7 +35,7 @@ namespace DotNetX
                     throw new ArgumentNullException(nameof(disposables), 
                         "You cannot pass a null disposable");
                 }
-                return !disposables.Contains(d);
+                return !this.disposables.Contains(d);
             }));
 
             return this;

@@ -405,7 +405,7 @@ namespace DotNetX
             return text;
         }
 
-        #endregion [ GetRandomHexString ]
+        #endregion [ ChangeCase ]
 
 
         #region [ Format ]
