@@ -16,6 +16,7 @@ using System.ComponentModel.Design;
 
 namespace DotNetX.Tests
 {
+
     [TestFixture]
     public class ReflectionExtensionsTests
     {
@@ -378,5 +379,186 @@ namespace DotNetX.Tests
         //}
 
         #endregion [ ConformsTo ]
+
+
+        [Test]
+        public void TryGetAllGenericParametersOnNullGenericTypeShouldFail()
+        {
+            // Given
+            Type type = typeof(string);
+            Type genericTypeDefinition = default(Type)!; 
+
+            // When
+            Action action = () => type.TryGetAllGenericParameters(genericTypeDefinition, out var types);
+
+            // Then
+            action.Should().Throw<ArgumentNullException>();
+        }
+
+        [Test]
+        public void TryGetAllGenericParametersOnNullTypeShouldFail()
+        {
+            // Given
+            Type type = default(Type)!;
+            Type genericTypeDefinition = typeof(string);
+
+            // When
+            Action action = () => type.TryGetAllGenericParameters(genericTypeDefinition, out var types);
+
+            // Then
+            action.Should().Throw<ArgumentNullException>();
+        }
+
+        [Test]
+        public void TryGetAllGenericParametersOnNonGenericTypeShouldReturnFalse()
+        {
+            // Given
+            Type type = typeof(string);
+            Type genericTypeDefinition = typeof(string);
+
+            // When
+            var result = type.TryGetAllGenericParameters(genericTypeDefinition, out var types);
+
+            // Then
+            result.Should().Be(false);
+        }
+
+        [Test]
+        public void TryGetAllGenericParametersOnNonMatchingTypeShouldReturnFalse()
+        {
+            // Given
+            Type type = typeof(IEnumerable<string>);
+            Type genericTypeDefinition = typeof(IDictionary<,>);
+
+            // When
+            var result = type.TryGetAllGenericParameters(genericTypeDefinition, out var types);
+
+            // Then
+            result.Should().Be(false);
+        }
+
+        [Test]
+        public void TryGetAllGenericParametersOnExactMatchingTypeShouldReturnTrue()
+        {
+            // Given
+            Type type = typeof(IEnumerable<string>);
+            Type genericTypeDefinition = typeof(IEnumerable<>);
+
+            // When
+            var result = type.TryGetAllGenericParameters(genericTypeDefinition, out var types);
+
+            // Then
+            result.Should().Be(true);
+            types.Should().Equal(typeof(string));
+        }
+
+        [Test]
+        public void TryGetAllGenericParametersOnHierarchyMatchingTypeShouldReturnFalse()
+        {
+            // Given
+            Type type = typeof(List<string>);
+            Type genericTypeDefinition = typeof(IEnumerable<>);
+
+            // When
+            var result = type.TryGetAllGenericParameters(genericTypeDefinition, out var types);
+
+            // Then
+            result.Should().Be(false);
+        }
+
+        [Test]
+        public void TryGetGenericParameters1OnNonMatchingTypeShouldReturnFalse()
+        {
+            // Given
+            Type type = typeof(IEnumerable<string>);
+            Type genericTypeDefinition = typeof(IDictionary<,>);
+
+            // When
+            var result = type.TryGetGenericParameters(genericTypeDefinition, out var first);
+
+            // Then
+            result.Should().Be(false);
+        }
+
+        [Test]
+        public void TryGetGenericParameters1OnExactMatchingTypeShouldReturnTrue()
+        {
+            // Given
+            Type type = typeof(IEnumerable<string>);
+            Type genericTypeDefinition = typeof(IEnumerable<>);
+
+            // When
+            var result = type.TryGetGenericParameters(genericTypeDefinition, out var first);
+
+            // Then
+            result.Should().Be(true);
+            first.Should().Be(typeof(string));
+        }
+        
+        [Test]
+        public void TryGetGenericParameters2OnNonMatchingTypeShouldReturnFalse()
+        {
+            // Given
+            Type type = typeof(IDictionary<string, int>);
+            Type genericTypeDefinition = typeof(IEnumerable<>);
+
+            // When
+            var result = type.TryGetGenericParameters(genericTypeDefinition, out var _, out var _);
+
+            // Then
+            result.Should().Be(false);
+        }
+
+        [Test]
+        public void TryGetGenericParameters2OnExactMatchingTypeShouldReturnTrue()
+        {
+            // Given
+            Type type = typeof(IDictionary<string, int>);
+            Type genericTypeDefinition = typeof(IDictionary<,>);
+
+            // When
+            var result = type.TryGetGenericParameters(genericTypeDefinition, out var first, out var second);
+
+            // Then
+            result.Should().Be(true);
+            first.Should().Be(typeof(string));
+            second.Should().Be(typeof(int));
+        }
+        
+        [Test]
+        public void TryGetGenericParameters3OnNonMatchingTypeShouldReturnFalse()
+        {
+            // Given
+            Type type = typeof(ISomeInterfaceWithThreeArgs<string, int, DateTime>);
+            Type genericTypeDefinition = typeof(IEnumerable<>);
+
+            // When
+            var result = type.TryGetGenericParameters(genericTypeDefinition, out var _, out var _, out var _);
+
+            // Then
+            result.Should().Be(false);
+        }
+
+        [Test]
+        public void TryGetGenericParameters3OnExactMatchingTypeShouldReturnTrue()
+        {
+            // Given
+            Type type = typeof(ISomeInterfaceWithThreeArgs<string, int, DateTime>);
+            Type genericTypeDefinition = typeof(ISomeInterfaceWithThreeArgs<,,>);
+
+            // When
+            var result = type.TryGetGenericParameters(genericTypeDefinition, out var first, out var second, out var third);
+
+            // Then
+            result.Should().Be(true);
+            first.Should().Be(typeof(string));
+            second.Should().Be(typeof(int));
+            third.Should().Be(typeof(DateTime));
+        }
+
+        public interface ISomeInterfaceWithThreeArgs<A, B, C>
+        {
+
+        }
     }
 }
