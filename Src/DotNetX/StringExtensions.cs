@@ -6,6 +6,7 @@ using System.Text.RegularExpressions;
 
 namespace DotNetX
 {
+
     public static class StringExtensions
     {
         #region [ IsNullOrEmpty / IsNullOrWhiteSpace ]
