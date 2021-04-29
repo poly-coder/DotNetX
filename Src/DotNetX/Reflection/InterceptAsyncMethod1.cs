@@ -392,8 +392,8 @@ namespace DotNetX.Reflection
                     await resultTask;
 
                     var result = typeof(Task<T>).InvokeMember(
-                        "Result",
-                        BindingFlags.Public | BindingFlags.Instance,
+                        nameof(Task<T>.Result),
+                        BindingFlags.Public | BindingFlags.Instance | BindingFlags.GetProperty,
                         binder: null,
                         resultTask,
                         args: null);
@@ -422,8 +422,8 @@ namespace DotNetX.Reflection
                 await resultTask;
 
                 var result = typeof(Task<T>).InvokeMember(
-                    "Result",
-                    BindingFlags.Public | BindingFlags.Instance,
+                    nameof(Task<T>.Result),
+                    BindingFlags.Public | BindingFlags.Instance | BindingFlags.GetProperty,
                     binder: null,
                     resultTask,
                     args: null);
@@ -526,7 +526,7 @@ namespace DotNetX.Reflection
 
                     var result = typeof(ValueTask<T>).InvokeMember(
                         nameof(ValueTask<T>.Result),
-                        BindingFlags.Public | BindingFlags.Instance,
+                        BindingFlags.Public | BindingFlags.Instance | BindingFlags.GetProperty,
                         binder: null,
                         resultTask,
                         args: null);
@@ -550,13 +550,13 @@ namespace DotNetX.Reflection
 
             try
             {
-                ValueTask resultTask = (ValueTask)targetMethod.Invoke(target, args);
+                ValueTask<T> resultTask = (ValueTask<T>)targetMethod.Invoke(target, args);
 
                 await resultTask;
 
-                var result = typeof(Task<T>).InvokeMember(
-                    "Result",
-                    BindingFlags.Public | BindingFlags.Instance,
+                var result = typeof(ValueTask<T>).InvokeMember(
+                    nameof(ValueTask<T>.Result),
+                    BindingFlags.Public | BindingFlags.Instance | BindingFlags.GetProperty,
                     binder: null,
                     resultTask,
                     args: null);
