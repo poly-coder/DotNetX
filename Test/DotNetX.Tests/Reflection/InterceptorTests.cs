@@ -52,7 +52,7 @@ namespace DotNetX.Tests
             var intercepted =
                 InterceptorOptions.Default
                     .Add(new FalseInterceptMethod())
-                    .AddRange(new InterceptMethod[]
+                    .AddRange(new IInterceptMethod[]
                     {
                         new FalseInterceptMethod(),
                         InterceptSyncMethod.Default,
@@ -3459,26 +3459,26 @@ namespace DotNetX.Tests
             ValueTask<int> ValueTaskMethod(string arg1);
         }
 
-        public record ThrowInterceptMethod() : InterceptMethod()
+        public record ThrowInterceptMethod() : IInterceptMethod
         {
-            public override bool TryToIntercept(object target, MethodInfo targetMethod, object?[]? args, out object? result)
+            public bool TryToIntercept(object target, MethodInfo targetMethod, object?[]? args, out object? result)
             {
                 throw new InvalidOperationException();
             }
         }
 
-        public record FalseInterceptMethod() : InterceptMethod()
+        public record FalseInterceptMethod() : IInterceptMethod
         {
-            public override bool TryToIntercept(object target, MethodInfo targetMethod, object?[]? args, out object? result)
+            public bool TryToIntercept(object target, MethodInfo targetMethod, object?[]? args, out object? result)
             {
                 result = null;
                 return false;
             }
         }
 
-        public record TrueInterceptMethod(object? Value) : InterceptMethod()
+        public record TrueInterceptMethod(object? Value) : IInterceptMethod
         {
-            public override bool TryToIntercept(object target, MethodInfo targetMethod, object?[]? args, out object? result)
+            public bool TryToIntercept(object target, MethodInfo targetMethod, object?[]? args, out object? result)
             {
                 result = Value;
                 return true;

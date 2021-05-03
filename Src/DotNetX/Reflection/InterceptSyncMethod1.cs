@@ -7,8 +7,9 @@ namespace DotNetX.Reflection
     public record InterceptSyncMethod<TState>(
         Func<object, MethodInfo, object?[]?, TState>? BeforeAction = null,
         Action<TState, object, MethodInfo, object?[]?, object?>? AfterAction = null,
-        Action<TState, object, MethodInfo, object?[]?, Exception>? ErrorAction = null) 
-        : InterceptMethod()
+        Action<TState, object, MethodInfo, object?[]?, Exception>? ErrorAction = null,
+        Func<object, MethodInfo, object?[]?, bool>? ShouldInterceptAction = null) 
+        : IInterceptMethod
     {
         public static readonly InterceptSyncMethod<TState> Default = CreateDefaultOptions();
 
@@ -27,7 +28,8 @@ namespace DotNetX.Reflection
             return this
                 .Before(interceptors.Before)
                 .After(interceptors.After)
-                .Error(interceptors.Error);
+                .Error(interceptors.Error)
+                .ShouldIntercept(interceptors.ShouldIntercept);
         }
 
         public InterceptSyncMethod<TState> Before(Func<TState> action)
@@ -134,35 +136,48 @@ namespace DotNetX.Reflection
             };
         }
 
-        public override bool TryToIntercept(object target, MethodInfo targetMethod, object?[]? args, out object? result)
+        public InterceptSyncMethod<TState> ShouldIntercept(Func<bool> action)
         {
-            if (BeforeAction == null)
+            if (action is null)
             {
-                try
-                {
-                    result = targetMethod.Invoke(target, args);
-                    return true;
-                }
-                catch (Exception exception)
-                {
-                    if (exception is TargetInvocationException ex)
-                    {
-                        exception = ex.InnerException ?? ex;
-                    }
-
-                    ExceptionDispatchInfo.Throw(exception);
-
-                    throw;
-                }
+                throw new ArgumentNullException(nameof(action));
             }
 
-            var state = BeforeAction(target, targetMethod, args);
+            return this with
+            {
+                ShouldInterceptAction = (_, _, _) => action(),
+            };
+        }
+
+        public InterceptSyncMethod<TState> ShouldIntercept(Func<object, MethodInfo, object?[]?, bool> action)
+        {
+            if (action is null)
+            {
+                throw new ArgumentNullException(nameof(action));
+            }
+
+            return this with
+            {
+                ShouldInterceptAction = action,
+            };
+        }
+
+        public bool TryToIntercept(object target, MethodInfo targetMethod, object?[]? args, out object? result)
+        {
+            bool shouldIntercept =
+                BeforeAction != null &&
+                (ShouldInterceptAction == null || !ShouldInterceptAction(target, targetMethod, args));
+
+            var state = shouldIntercept ? BeforeAction!(target, targetMethod, args) : default;
 
             try
             {
                 result = targetMethod.Invoke(target, args);
-                
-                AfterAction?.Invoke(state, target, targetMethod, args, result);
+
+                if (shouldIntercept && AfterAction != null)
+                {
+                    AfterAction.Invoke(state!, target, targetMethod, args, result);
+                }
 
                 return true;
             }
@@ -173,7 +188,10 @@ namespace DotNetX.Reflection
                     exception = ex.InnerException ?? ex;
                 }
 
-                ErrorAction?.Invoke(state, target, targetMethod, args, exception);
+                if (shouldIntercept && ErrorAction != null)
+                {
+                    ErrorAction.Invoke(state!, target, targetMethod, args, exception);
+                }
 
                 ExceptionDispatchInfo.Throw(exception);
                 

@@ -6,8 +6,8 @@ namespace DotNetX.Reflection
 {
     public record InterceptorOptions(
         string DisplayName,
-        ImmutableList<InterceptMethod> Interceptors)
-        : InterceptMethod()
+        ImmutableList<IInterceptMethod> Interceptors)
+        : IInterceptMethod
     {
         public static readonly InterceptorOptions Default = CreateDefaultOptions();
 
@@ -15,10 +15,10 @@ namespace DotNetX.Reflection
         {
             return new InterceptorOptions(
                 nameof(Default),
-                ImmutableList<InterceptMethod>.Empty);
+                ImmutableList<IInterceptMethod>.Empty);
         }
 
-        public InterceptorOptions Prepend(InterceptMethod interceptor)
+        public InterceptorOptions Prepend(IInterceptMethod interceptor)
         {
             return this with
             {
@@ -26,7 +26,7 @@ namespace DotNetX.Reflection
             };
         }
 
-        public InterceptorOptions Add(InterceptMethod interceptor)
+        public InterceptorOptions Add(IInterceptMethod interceptor)
         {
             return this with
             {
@@ -34,7 +34,7 @@ namespace DotNetX.Reflection
             };
         }
 
-        public InterceptorOptions AddRange(IEnumerable<InterceptMethod> interceptors)
+        public InterceptorOptions AddRange(IEnumerable<IInterceptMethod> interceptors)
         {
             return this with
             {
@@ -42,7 +42,7 @@ namespace DotNetX.Reflection
             };
         }
 
-        public override bool TryToIntercept(object target, MethodInfo targetMethod, object?[]? args, out object? result)
+        public bool TryToIntercept(object target, MethodInfo targetMethod, object?[]? args, out object? result)
         {
             foreach (var interceptor in Interceptors)
             {

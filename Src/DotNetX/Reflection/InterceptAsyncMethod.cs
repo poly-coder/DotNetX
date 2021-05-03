@@ -9,8 +9,9 @@ namespace DotNetX.Reflection
     public record InterceptAsyncMethod(
         Func<object, MethodInfo, object?[]?, Task>? BeforeAction = null,
         Func<object, MethodInfo, object?[]?, object?, Task>? AfterAction = null,
-        Func<object, MethodInfo, object?[]?, Exception, Task>? ErrorAction = null)
-        : InterceptMethod()
+        Func<object, MethodInfo, object?[]?, Exception, Task>? ErrorAction = null,
+        Func<object, MethodInfo, object?[]?, bool>? ShouldInterceptAction = null)
+        : IInterceptMethod
     {
         public static readonly InterceptAsyncMethod Default = CreateDefaultOptions();
 
@@ -281,7 +282,33 @@ namespace DotNetX.Reflection
             };
         }
 
-        public override bool TryToIntercept(object target, MethodInfo targetMethod, object?[]? args, out object? result)
+        public InterceptAsyncMethod ShouldIntercept(Func<bool> action)
+        {
+            if (action is null)
+            {
+                throw new ArgumentNullException(nameof(action));
+            }
+
+            return this with
+            {
+                ShouldInterceptAction = (_, _, _) => action(),
+            };
+        }
+
+        public InterceptAsyncMethod ShouldIntercept(Func<object, MethodInfo, object?[]?, bool> action)
+        {
+            if (action is null)
+            {
+                throw new ArgumentNullException(nameof(action));
+            }
+
+            return this with
+            {
+                ShouldInterceptAction = action,
+            };
+        }
+
+        public bool TryToIntercept(object target, MethodInfo targetMethod, object?[]? args, out object? result)
         {
             var returnType = targetMethod.ReturnType;
 
@@ -317,9 +344,13 @@ namespace DotNetX.Reflection
 
         private async Task InterceptAsTask(object target, MethodInfo targetMethod, object?[]? args)
         {
+            bool shouldIntercept =
+                ShouldInterceptAction == null ||
+                !ShouldInterceptAction(target, targetMethod, args);
+
             try
             {
-                if (BeforeAction != null)
+                if (shouldIntercept && BeforeAction != null)
                 {
                     await BeforeAction(target, targetMethod, args);
                 }
@@ -328,7 +359,7 @@ namespace DotNetX.Reflection
 
                 await resultTask;
 
-                if (AfterAction != null)
+                if (shouldIntercept && AfterAction != null)
                 {
                     await AfterAction(target, targetMethod, args, null);
                 }
@@ -340,7 +371,7 @@ namespace DotNetX.Reflection
                     exception = ex.InnerException ?? ex;
                 }
 
-                if (ErrorAction != null)
+                if (shouldIntercept && ErrorAction != null)
                 {
                     await ErrorAction(target, targetMethod, args, exception);
                 }
@@ -358,9 +389,13 @@ namespace DotNetX.Reflection
 
         private async Task<T> InterceptAsTaskOf<T>(object target, MethodInfo targetMethod, object?[]? args)
         {
+            bool shouldIntercept =
+                ShouldInterceptAction == null ||
+                !ShouldInterceptAction(target, targetMethod, args);
+
             try
             {
-                if (BeforeAction != null)
+                if (shouldIntercept && BeforeAction != null)
                 {
                     await BeforeAction(target, targetMethod, args);
                 }
@@ -376,7 +411,7 @@ namespace DotNetX.Reflection
                     resultTask,
                     args: null);
 
-                if (AfterAction != null)
+                if (shouldIntercept && AfterAction != null)
                 {
                     await AfterAction(target, targetMethod, args, result);
                 }
@@ -390,7 +425,7 @@ namespace DotNetX.Reflection
                     exception = ex.InnerException ?? ex;
                 }
 
-                if (ErrorAction != null)
+                if (shouldIntercept && ErrorAction != null)
                 {
                     await ErrorAction(target, targetMethod, args, exception);
                 }
@@ -403,9 +438,13 @@ namespace DotNetX.Reflection
 
         private async ValueTask InterceptAsValueTask(object target, MethodInfo targetMethod, object?[]? args)
         {
+            bool shouldIntercept =
+                ShouldInterceptAction == null ||
+                !ShouldInterceptAction(target, targetMethod, args);
+
             try
             {
-                if (BeforeAction != null)
+                if (shouldIntercept && BeforeAction != null)
                 {
                     await BeforeAction(target, targetMethod, args);
                 }
@@ -414,7 +453,7 @@ namespace DotNetX.Reflection
 
                 await resultTask;
 
-                if (AfterAction != null)
+                if (shouldIntercept && AfterAction != null)
                 {
                     await AfterAction(target, targetMethod, args, null);
                 }
@@ -426,7 +465,7 @@ namespace DotNetX.Reflection
                     exception = ex.InnerException ?? ex;
                 }
 
-                if (ErrorAction != null)
+                if (shouldIntercept && ErrorAction != null)
                 {
                     await ErrorAction(target, targetMethod, args, exception);
                 }
@@ -444,9 +483,13 @@ namespace DotNetX.Reflection
 
         private async ValueTask<T> InterceptAsValueTaskOf<T>(object target, MethodInfo targetMethod, object?[]? args)
         {
+            bool shouldIntercept =
+                ShouldInterceptAction == null || 
+                !ShouldInterceptAction(target, targetMethod, args);
+
             try
             {
-                if (BeforeAction != null)
+                if (shouldIntercept && BeforeAction != null)
                 {
                     await BeforeAction(target, targetMethod, args);
                 }
@@ -462,7 +505,7 @@ namespace DotNetX.Reflection
                     resultTask,
                     args: null);
 
-                if (AfterAction != null)
+                if (shouldIntercept && AfterAction != null)
                 {
                     await AfterAction(target, targetMethod, args, result);
                 }
@@ -476,7 +519,7 @@ namespace DotNetX.Reflection
                     exception = ex.InnerException ?? ex;
                 }
 
-                if (ErrorAction != null)
+                if (shouldIntercept && ErrorAction != null)
                 {
                     await ErrorAction(target, targetMethod, args, exception);
                 }

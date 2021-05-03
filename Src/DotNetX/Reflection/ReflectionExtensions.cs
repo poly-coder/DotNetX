@@ -4,6 +4,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace DotNetX.Reflection
 {
@@ -585,6 +586,8 @@ namespace DotNetX.Reflection
         #endregion [ InvokeWith ]
 
 
+        #region [ TryGetGenericParameters ]
+
         public static bool TryGetAllGenericParameters(
             this Type type,
             Type genericTypeDefinition,
@@ -673,5 +676,44 @@ namespace DotNetX.Reflection
             third = null;
             return false;
         }
+
+        #endregion [ TryGetGenericParameters ]
+
+
+        #region [ TryGetDeclaringProperty ]
+
+        public static bool TryGetDeclaringProperty(
+            this MethodInfo method, 
+            [NotNullWhen(true)]
+            out PropertyInfo? property)
+        {
+            var type = method.DeclaringType;
+
+            if (type != null && method.IsSpecialName)
+            {
+                property = null;
+
+                if (method.Name.StartsWith("get_"))
+                {
+                    property = type
+                        .GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Public)
+                        .Where(p => p.GetGetMethod() == method)
+                        .FirstOrDefault();
+                } else if (method.Name.StartsWith("set_"))
+                {
+                    property = type
+                        .GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Public)
+                        .Where(p => p.GetSetMethod() == method)
+                        .FirstOrDefault();
+                }
+
+                return property != null;
+            }
+
+            property = null;
+            return false;
+        }
+
+        #endregion [ TryGetDeclaringProperty ]
     }
 }
