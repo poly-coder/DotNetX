@@ -350,7 +350,7 @@ namespace DotNetX.Reflection
         {
             bool shouldIntercept =
                 BeforeAction != null &&
-                (ShouldInterceptAction == null || !ShouldInterceptAction(target, targetMethod, args));
+                (ShouldInterceptAction == null || ShouldInterceptAction(target, targetMethod, args));
 
             var state = shouldIntercept ? await BeforeAction!(target, targetMethod, args) : default;
 
@@ -392,7 +392,7 @@ namespace DotNetX.Reflection
         {
             bool shouldIntercept =
                 BeforeAction != null &&
-                (ShouldInterceptAction == null || !ShouldInterceptAction(target, targetMethod, args));
+                (ShouldInterceptAction == null || ShouldInterceptAction(target, targetMethod, args));
 
             var state = shouldIntercept ? await BeforeAction!(target, targetMethod, args) : default;
 
@@ -438,7 +438,7 @@ namespace DotNetX.Reflection
         {
             bool shouldIntercept =
                 BeforeAction != null && 
-                (ShouldInterceptAction == null || !ShouldInterceptAction(target, targetMethod, args));
+                (ShouldInterceptAction == null || ShouldInterceptAction(target, targetMethod, args));
 
             var state = shouldIntercept ? await BeforeAction!(target, targetMethod, args) : default;
 
@@ -480,7 +480,7 @@ namespace DotNetX.Reflection
         {
             bool shouldIntercept =
                 BeforeAction != null &&
-                (ShouldInterceptAction == null || !ShouldInterceptAction(target, targetMethod, args));
+                (ShouldInterceptAction == null || ShouldInterceptAction(target, targetMethod, args));
 
             var state = shouldIntercept ? await BeforeAction!(target, targetMethod, args) : default;
 

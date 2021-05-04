@@ -127,6 +127,7 @@ namespace DotNetX.Tests
             interceptor.BeforeAction.Should().BeNull();
             interceptor.AfterAction.Should().BeNull();
             interceptor.ErrorAction.Should().BeNull();
+            interceptor.ShouldInterceptAction.Should().BeNull();
         }
 
         [Test]
@@ -158,6 +159,9 @@ namespace DotNetX.Tests
         {
             // Given
             var interceptorsMock = new Mock<IInterceptSyncMethod>(MockBehavior.Loose);
+            interceptorsMock
+                .Setup(interceptors => interceptors.ShouldIntercept(It.IsAny<object>(), It.IsAny<MethodInfo>(), It.IsAny<object?[]?>()))
+                .Returns(true);
 
             var targetMock = new Mock<IDummyTarget>(MockBehavior.Strict);
             targetMock
@@ -205,6 +209,9 @@ namespace DotNetX.Tests
         {
             // Given
             var interceptorsMock = new Mock<IInterceptSyncMethod>(MockBehavior.Loose);
+            interceptorsMock
+                .Setup(interceptors => interceptors.ShouldIntercept(It.IsAny<object>(), It.IsAny<MethodInfo>(), It.IsAny<object?[]?>()))
+                .Returns(true);
 
             var targetMock = new Mock<IDummyTarget>(MockBehavior.Strict);
             targetMock
@@ -255,6 +262,9 @@ namespace DotNetX.Tests
         {
             // Given
             var interceptorsMock = new Mock<IInterceptSyncMethod>(MockBehavior.Loose);
+            interceptorsMock
+                .Setup(interceptors => interceptors.ShouldIntercept(It.IsAny<object>(), It.IsAny<MethodInfo>(), It.IsAny<object?[]?>()))
+                .Returns(true);
 
             var targetMock = new Mock<IDummyTarget>(MockBehavior.Strict);
             targetMock
@@ -301,6 +311,56 @@ namespace DotNetX.Tests
         }
 
         [Test]
+        public void InterceptSyncMethodWithInterceptTurnedOffShouldNotCallBeforeAndAfter()
+        {
+            // Given
+            var interceptorsMock = new Mock<IInterceptSyncMethod>(MockBehavior.Loose);
+            interceptorsMock
+                .Setup(interceptor => interceptor.ShouldIntercept(It.IsAny<object>(), It.IsAny<MethodInfo>(), It.IsAny<object?[]?>()))
+                .Returns(false);
+
+            var targetMock = new Mock<IDummyTarget>(MockBehavior.Strict);
+            targetMock
+                .Setup(target => target.VoidMethod(It.IsAny<string>()));
+
+            var intercepted =
+                InterceptorOptions.Default
+                    .Add(InterceptSyncMethod.Default.With(interceptorsMock.Object))
+                    .CreateInterceptor(targetMock.Object);
+
+            // When
+            intercepted.VoidMethod("value1");
+
+            // Then
+            targetMock.Verify(
+                target => target.VoidMethod("value1"),
+                Times.Once);
+
+            interceptorsMock.Verify(
+                target => target.Before(
+                    It.IsAny<object>(),
+                    It.IsAny<MethodInfo>(),
+                    It.IsAny<object?[]?>()),
+                Times.Never);
+
+            interceptorsMock.Verify(
+                target => target.After(
+                    It.IsAny<object>(),
+                    It.IsAny<MethodInfo>(),
+                    It.IsAny<object?[]?>(),
+                    It.IsAny<object?>()),
+                Times.Never);
+
+            interceptorsMock.Verify(
+                target => target.Error(
+                    It.IsAny<object>(),
+                    It.IsAny<MethodInfo>(),
+                    It.IsAny<object?[]?>(),
+                    It.IsAny<Exception>()),
+                Times.Never);
+        }
+
+        [Test]
         public void InterceptSyncMethodWithNullInterceptorsShouldFail()
         {
             // Given
@@ -311,6 +371,64 @@ namespace DotNetX.Tests
 
             // Then
             action.Should().Throw<ArgumentNullException>();
+        }
+
+        [Test]
+        public void InterceptSyncMethodShouldIntercept0WithNullShouldFail()
+        {
+            // Given
+            var interceptor = InterceptSyncMethod.Default;
+
+            // When
+            Action action = () => interceptor.ShouldIntercept(default(Func<bool>)!);
+
+            // Then
+            action.Should().Throw<ArgumentNullException>();
+        }
+
+        [Test]
+        public void InterceptSyncMethodShouldIntercept0WithActionShouldAssignBeforeAction()
+        {
+            // Given
+            var interceptor = InterceptSyncMethod.Default;
+
+            // When
+            interceptor = interceptor.ShouldIntercept(() => true);
+
+            // Then
+            interceptor.BeforeAction.Should().BeNull();
+            interceptor.AfterAction.Should().BeNull();
+            interceptor.ErrorAction.Should().BeNull();
+            interceptor.ShouldInterceptAction.Should().NotBeNull();
+        }
+
+        [Test]
+        public void InterceptSyncMethodShouldIntercept3WithNullShouldFail()
+        {
+            // Given
+            var interceptor = InterceptSyncMethod.Default;
+
+            // When
+            Action action = () => interceptor.ShouldIntercept(default(Func<object, MethodInfo, object?[]?, bool>)!);
+
+            // Then
+            action.Should().Throw<ArgumentNullException>();
+        }
+
+        [Test]
+        public void InterceptSyncMethodShouldIntercept3WithActionShouldAssignShouldInterceptAction()
+        {
+            // Given
+            var interceptor = InterceptSyncMethod.Default;
+
+            // When
+            interceptor = interceptor.ShouldIntercept((_, _, _) => true);
+
+            // Then
+            interceptor.BeforeAction.Should().BeNull();
+            interceptor.AfterAction.Should().BeNull();
+            interceptor.ErrorAction.Should().BeNull();
+            interceptor.ShouldInterceptAction.Should().NotBeNull();
         }
 
         [Test]
@@ -339,6 +457,7 @@ namespace DotNetX.Tests
             interceptor.BeforeAction.Should().NotBeNull();
             interceptor.AfterAction.Should().BeNull();
             interceptor.ErrorAction.Should().BeNull();
+            interceptor.ShouldInterceptAction.Should().BeNull();
         }
 
         [Test]
@@ -400,6 +519,7 @@ namespace DotNetX.Tests
             interceptor.BeforeAction.Should().BeNull();
             interceptor.AfterAction.Should().NotBeNull();
             interceptor.ErrorAction.Should().BeNull();
+            interceptor.ShouldInterceptAction.Should().BeNull();
         }
 
         [Test]
@@ -494,6 +614,7 @@ namespace DotNetX.Tests
             interceptor.BeforeAction.Should().BeNull();
             interceptor.AfterAction.Should().BeNull();
             interceptor.ErrorAction.Should().NotBeNull();
+            interceptor.ShouldInterceptAction.Should().BeNull();
         }
 
         [Test]
@@ -580,6 +701,7 @@ namespace DotNetX.Tests
             interceptor.BeforeAction.Should().BeNull();
             interceptor.AfterAction.Should().BeNull();
             interceptor.ErrorAction.Should().BeNull();
+            interceptor.ShouldInterceptAction.Should().BeNull();
         }
 
         [Test]
@@ -637,6 +759,9 @@ namespace DotNetX.Tests
             interceptorsMock
                 .Setup(interceptors => interceptors.Before(It.IsAny<object>(), It.IsAny<MethodInfo>(), It.IsAny<object?[]?>()))
                 .Returns("STATE");
+            interceptorsMock
+                .Setup(interceptors => interceptors.ShouldIntercept(It.IsAny<object>(), It.IsAny<MethodInfo>(), It.IsAny<object?[]?>()))
+                .Returns(true);
 
             var targetMock = new Mock<IDummyTarget>(MockBehavior.Strict);
             targetMock
@@ -689,6 +814,9 @@ namespace DotNetX.Tests
             interceptorsMock
                 .Setup(interceptors => interceptors.Before(It.IsAny<object>(), It.IsAny<MethodInfo>(), It.IsAny<object?[]?>()))
                 .Returns("STATE");
+            interceptorsMock
+                .Setup(interceptors => interceptors.ShouldIntercept(It.IsAny<object>(), It.IsAny<MethodInfo>(), It.IsAny<object?[]?>()))
+                .Returns(true);
 
             var targetMock = new Mock<IDummyTarget>(MockBehavior.Strict);
             targetMock
@@ -744,6 +872,9 @@ namespace DotNetX.Tests
             interceptorsMock
                 .Setup(interceptors => interceptors.Before(It.IsAny<object>(), It.IsAny<MethodInfo>(), It.IsAny<object?[]?>()))
                 .Returns("STATE");
+            interceptorsMock
+                .Setup(interceptors => interceptors.ShouldIntercept(It.IsAny<object>(), It.IsAny<MethodInfo>(), It.IsAny<object?[]?>()))
+                .Returns(true);
 
             var targetMock = new Mock<IDummyTarget>(MockBehavior.Strict);
             targetMock
@@ -805,6 +936,64 @@ namespace DotNetX.Tests
         }
 
         [Test]
+        public void InterceptSyncMethodTStateShouldIntercept0WithNullShouldFail()
+        {
+            // Given
+            var interceptor = InterceptSyncMethod<string>.Default;
+
+            // When
+            Action action = () => interceptor.ShouldIntercept(default(Func<bool>)!);
+
+            // Then
+            action.Should().Throw<ArgumentNullException>();
+        }
+
+        [Test]
+        public void InterceptSyncMethodTStateShouldIntercept0WithActionShouldAssignBeforeAction()
+        {
+            // Given
+            var interceptor = InterceptSyncMethod<string>.Default;
+
+            // When
+            interceptor = interceptor.ShouldIntercept(() => true);
+
+            // Then
+            interceptor.BeforeAction.Should().BeNull();
+            interceptor.AfterAction.Should().BeNull();
+            interceptor.ErrorAction.Should().BeNull();
+            interceptor.ShouldInterceptAction.Should().NotBeNull();
+        }
+
+        [Test]
+        public void InterceptSyncMethodTStateShouldIntercept3WithNullShouldFail()
+        {
+            // Given
+            var interceptor = InterceptSyncMethod<string>.Default;
+
+            // When
+            Action action = () => interceptor.ShouldIntercept(default(Func<object, MethodInfo, object?[]?, bool>)!);
+
+            // Then
+            action.Should().Throw<ArgumentNullException>();
+        }
+
+        [Test]
+        public void InterceptSyncMethodTStateShouldIntercept3WithActionShouldAssignShouldInterceptAction()
+        {
+            // Given
+            var interceptor = InterceptSyncMethod<string>.Default;
+
+            // When
+            interceptor = interceptor.ShouldIntercept((_, _, _) => true);
+
+            // Then
+            interceptor.BeforeAction.Should().BeNull();
+            interceptor.AfterAction.Should().BeNull();
+            interceptor.ErrorAction.Should().BeNull();
+            interceptor.ShouldInterceptAction.Should().NotBeNull();
+        }
+
+        [Test]
         public void InterceptSyncMethodTStateBefore0WithNullShouldFail()
         {
             // Given
@@ -830,6 +1019,7 @@ namespace DotNetX.Tests
             interceptor.BeforeAction.Should().NotBeNull();
             interceptor.AfterAction.Should().BeNull();
             interceptor.ErrorAction.Should().BeNull();
+            interceptor.ShouldInterceptAction.Should().BeNull();
         }
 
         [Test]
@@ -891,6 +1081,7 @@ namespace DotNetX.Tests
             interceptor.BeforeAction.Should().BeNull();
             interceptor.AfterAction.Should().NotBeNull();
             interceptor.ErrorAction.Should().BeNull();
+            interceptor.ShouldInterceptAction.Should().BeNull();
         }
 
         [Test]
@@ -985,6 +1176,7 @@ namespace DotNetX.Tests
             interceptor.BeforeAction.Should().BeNull();
             interceptor.AfterAction.Should().BeNull();
             interceptor.ErrorAction.Should().NotBeNull();
+            interceptor.ShouldInterceptAction.Should().BeNull();
         }
 
         [Test]
@@ -1071,6 +1263,7 @@ namespace DotNetX.Tests
             interceptor.BeforeAction.Should().BeNull();
             interceptor.AfterAction.Should().BeNull();
             interceptor.ErrorAction.Should().BeNull();
+            interceptor.ShouldInterceptAction.Should().BeNull();
         }
 
         [Test]
@@ -1606,6 +1799,64 @@ namespace DotNetX.Tests
         }
 
         [Test]
+        public void InterceptAsyncMethodShouldIntercept0WithNullShouldFail()
+        {
+            // Given
+            var interceptor = InterceptAsyncMethod.Default;
+
+            // When
+            Action action = () => interceptor.ShouldIntercept(default(Func<bool>)!);
+
+            // Then
+            action.Should().Throw<ArgumentNullException>();
+        }
+
+        [Test]
+        public void InterceptAsyncMethodShouldIntercept0WithActionShouldAssignShouldInterceptAction()
+        {
+            // Given
+            var interceptor = InterceptAsyncMethod.Default;
+
+            // When
+            interceptor = interceptor.ShouldIntercept(() => true);
+
+            // Then
+            interceptor.BeforeAction.Should().BeNull();
+            interceptor.AfterAction.Should().BeNull();
+            interceptor.ErrorAction.Should().BeNull();
+            interceptor.ShouldInterceptAction.Should().NotBeNull();
+        }
+
+        [Test]
+        public void InterceptAsyncMethodShouldIntercept3WithNullShouldFail()
+        {
+            // Given
+            var interceptor = InterceptAsyncMethod.Default;
+
+            // When
+            Action action = () => interceptor.ShouldIntercept(default(Func<object, MethodInfo, object?[]?, bool>)!);
+
+            // Then
+            action.Should().Throw<ArgumentNullException>();
+        }
+
+        [Test]
+        public void InterceptAsyncMethodShouldIntercept3WithActionShouldAssignShouldInterceptAction()
+        {
+            // Given
+            var interceptor = InterceptAsyncMethod.Default;
+
+            // When
+            interceptor = interceptor.ShouldIntercept((_, _, _) => true);
+
+            // Then
+            interceptor.BeforeAction.Should().BeNull();
+            interceptor.AfterAction.Should().BeNull();
+            interceptor.ErrorAction.Should().BeNull();
+            interceptor.ShouldInterceptAction.Should().NotBeNull();
+        }
+
+        [Test]
         public void InterceptAsyncMethodBefore0AsyncWithNullShouldFail()
         {
             // Given
@@ -1644,6 +1895,7 @@ namespace DotNetX.Tests
             interceptor.BeforeAction.Should().NotBeNull();
             interceptor.AfterAction.Should().BeNull();
             interceptor.ErrorAction.Should().BeNull();
+            interceptor.ShouldInterceptAction.Should().BeNull();
         }
 
         [Test]
@@ -1659,6 +1911,7 @@ namespace DotNetX.Tests
             interceptor.BeforeAction.Should().NotBeNull();
             interceptor.AfterAction.Should().BeNull();
             interceptor.ErrorAction.Should().BeNull();
+            interceptor.ShouldInterceptAction.Should().BeNull();
         }
 
         [Test]
@@ -1770,6 +2023,7 @@ namespace DotNetX.Tests
             interceptor.BeforeAction.Should().BeNull();
             interceptor.AfterAction.Should().NotBeNull();
             interceptor.ErrorAction.Should().BeNull();
+            interceptor.ShouldInterceptAction.Should().BeNull();
         }
 
         [Test]
@@ -1785,6 +2039,7 @@ namespace DotNetX.Tests
             interceptor.BeforeAction.Should().BeNull();
             interceptor.AfterAction.Should().NotBeNull();
             interceptor.ErrorAction.Should().BeNull();
+            interceptor.ShouldInterceptAction.Should().BeNull();
         }
 
         [Test]
@@ -1966,6 +2221,7 @@ namespace DotNetX.Tests
             interceptor.BeforeAction.Should().BeNull();
             interceptor.AfterAction.Should().BeNull();
             interceptor.ErrorAction.Should().NotBeNull();
+            interceptor.ShouldInterceptAction.Should().BeNull();
         }
 
         [Test]
@@ -1981,6 +2237,7 @@ namespace DotNetX.Tests
             interceptor.BeforeAction.Should().BeNull();
             interceptor.AfterAction.Should().BeNull();
             interceptor.ErrorAction.Should().NotBeNull();
+            interceptor.ShouldInterceptAction.Should().BeNull();
         }
 
         [Test]
@@ -2218,6 +2475,7 @@ namespace DotNetX.Tests
             interceptor.BeforeAction.Should().BeNull();
             interceptor.AfterAction.Should().BeNull();
             interceptor.ErrorAction.Should().BeNull();
+            interceptor.ShouldInterceptAction.Should().BeNull();
         }
 
         [Test]
@@ -2825,6 +3083,64 @@ namespace DotNetX.Tests
         }
 
         [Test]
+        public void InterceptAsyncMethodTShouldIntercept0WithNullShouldFail()
+        {
+            // Given
+            var interceptor = InterceptAsyncMethod<string>.Default;
+
+            // When
+            Action action = () => interceptor.ShouldIntercept(default(Func<bool>)!);
+
+            // Then
+            action.Should().Throw<ArgumentNullException>();
+        }
+
+        [Test]
+        public void InterceptAsyncMethodTShouldIntercept0WithActionShouldAssignShouldInterceptAction()
+        {
+            // Given
+            var interceptor = InterceptAsyncMethod<string>.Default;
+
+            // When
+            interceptor = interceptor.ShouldIntercept(() => true);
+
+            // Then
+            interceptor.BeforeAction.Should().BeNull();
+            interceptor.AfterAction.Should().BeNull();
+            interceptor.ErrorAction.Should().BeNull();
+            interceptor.ShouldInterceptAction.Should().NotBeNull();
+        }
+
+        [Test]
+        public void InterceptAsyncMethodTShouldIntercept3WithNullShouldFail()
+        {
+            // Given
+            var interceptor = InterceptAsyncMethod<string>.Default;
+
+            // When
+            Action action = () => interceptor.ShouldIntercept(default(Func<object, MethodInfo, object?[]?, bool>)!);
+
+            // Then
+            action.Should().Throw<ArgumentNullException>();
+        }
+
+        [Test]
+        public void InterceptAsyncMethodTShouldIntercept3WithActionShouldAssignShouldInterceptAction()
+        {
+            // Given
+            var interceptor = InterceptAsyncMethod<string>.Default;
+
+            // When
+            interceptor = interceptor.ShouldIntercept((_, _, _) => true);
+
+            // Then
+            interceptor.BeforeAction.Should().BeNull();
+            interceptor.AfterAction.Should().BeNull();
+            interceptor.ErrorAction.Should().BeNull();
+            interceptor.ShouldInterceptAction.Should().NotBeNull();
+        }
+
+        [Test]
         public void InterceptAsyncMethodTBefore0AsyncWithNullShouldFail()
         {
             // Given
@@ -2863,6 +3179,7 @@ namespace DotNetX.Tests
             interceptor.BeforeAction.Should().NotBeNull();
             interceptor.AfterAction.Should().BeNull();
             interceptor.ErrorAction.Should().BeNull();
+            interceptor.ShouldInterceptAction.Should().BeNull();
         }
 
         [Test]
@@ -2878,6 +3195,7 @@ namespace DotNetX.Tests
             interceptor.BeforeAction.Should().NotBeNull();
             interceptor.AfterAction.Should().BeNull();
             interceptor.ErrorAction.Should().BeNull();
+            interceptor.ShouldInterceptAction.Should().BeNull();
         }
 
         [Test]
@@ -2990,6 +3308,7 @@ namespace DotNetX.Tests
             interceptor.BeforeAction.Should().BeNull();
             interceptor.AfterAction.Should().NotBeNull();
             interceptor.ErrorAction.Should().BeNull();
+            interceptor.ShouldInterceptAction.Should().BeNull();
         }
 
         [Test]
@@ -3005,6 +3324,7 @@ namespace DotNetX.Tests
             interceptor.BeforeAction.Should().BeNull();
             interceptor.AfterAction.Should().NotBeNull();
             interceptor.ErrorAction.Should().BeNull();
+            interceptor.ShouldInterceptAction.Should().BeNull();
         }
 
         [Test]
@@ -3194,6 +3514,7 @@ namespace DotNetX.Tests
             interceptor.BeforeAction.Should().BeNull();
             interceptor.AfterAction.Should().BeNull();
             interceptor.ErrorAction.Should().NotBeNull();
+            interceptor.ShouldInterceptAction.Should().BeNull();
         }
 
         [Test]
@@ -3209,6 +3530,7 @@ namespace DotNetX.Tests
             interceptor.BeforeAction.Should().BeNull();
             interceptor.AfterAction.Should().BeNull();
             interceptor.ErrorAction.Should().NotBeNull();
+            interceptor.ShouldInterceptAction.Should().BeNull();
         }
 
         [Test]

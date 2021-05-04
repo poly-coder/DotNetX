@@ -346,7 +346,7 @@ namespace DotNetX.Reflection
         {
             bool shouldIntercept =
                 ShouldInterceptAction == null ||
-                !ShouldInterceptAction(target, targetMethod, args);
+                ShouldInterceptAction(target, targetMethod, args);
 
             try
             {
@@ -391,7 +391,7 @@ namespace DotNetX.Reflection
         {
             bool shouldIntercept =
                 ShouldInterceptAction == null ||
-                !ShouldInterceptAction(target, targetMethod, args);
+                ShouldInterceptAction(target, targetMethod, args);
 
             try
             {
@@ -440,7 +440,7 @@ namespace DotNetX.Reflection
         {
             bool shouldIntercept =
                 ShouldInterceptAction == null ||
-                !ShouldInterceptAction(target, targetMethod, args);
+                ShouldInterceptAction(target, targetMethod, args);
 
             try
             {
@@ -485,7 +485,7 @@ namespace DotNetX.Reflection
         {
             bool shouldIntercept =
                 ShouldInterceptAction == null || 
-                !ShouldInterceptAction(target, targetMethod, args);
+                ShouldInterceptAction(target, targetMethod, args);
 
             try
             {
