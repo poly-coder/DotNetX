@@ -381,6 +381,8 @@ namespace DotNetX.Tests
         #endregion [ ConformsTo ]
 
 
+        #region [ TryGetGenericParameters ]
+
         [Test]
         public void TryGetAllGenericParametersOnNullGenericTypeShouldFail()
         {
@@ -560,5 +562,91 @@ namespace DotNetX.Tests
         {
 
         }
+
+        #endregion [ TryGetGenericParameters ]
+
+
+        #region [ TryGetDeclaringProperty ]
+
+        [Test]
+        public static void TryGetDeclaringPropertyOnNonPropertyMethod()
+        {
+            // Given
+            var method = typeof(TryGetDeclaringPropertyClass).GetMethod("AMethod")!;
+
+            // When
+            var result = method.TryGetDeclaringProperty(out var property);
+
+            // Then
+            result.Should().BeFalse();
+            property.Should().BeNull();
+        }
+
+        [Test]
+        public static void TryGetDeclaringPropertyOnFullPropertyGetter()
+        {
+            // Given
+            var method = typeof(TryGetDeclaringPropertyClass).GetProperty("AProperty")!.GetGetMethod()!;
+
+            // When
+            var result = method.TryGetDeclaringProperty(out var property);
+
+            // Then
+            result.Should().BeTrue();
+            property.Should().NotBeNull();
+        }
+ 
+        [Test]
+        public static void TryGetDeclaringPropertyOnFullPropertySetter()
+        {
+            // Given
+            var method = typeof(TryGetDeclaringPropertyClass).GetProperty("AProperty")!.GetSetMethod()!;
+
+            // When
+            var result = method.TryGetDeclaringProperty(out var property);
+
+            // Then
+            result.Should().BeTrue();
+            property.Should().NotBeNull();
+        }
+        
+        [Test]
+        public static void TryGetDeclaringPropertyOnGetterProperty()
+        {
+            // Given
+            var method = typeof(TryGetDeclaringPropertyClass).GetProperty("AGetterProperty")!.GetGetMethod()!;
+
+            // When
+            var result = method.TryGetDeclaringProperty(out var property);
+
+            // Then
+            result.Should().BeTrue();
+            property.Should().NotBeNull();
+        }
+ 
+        [Test]
+        public static void TryGetDeclaringPropertyOnSetterProperty()
+        {
+            // Given
+            var method = typeof(TryGetDeclaringPropertyClass).GetProperty("ASetterProperty")!.GetSetMethod()!;
+
+            // When
+            var result = method.TryGetDeclaringProperty(out var property);
+
+            // Then
+            result.Should().BeTrue();
+            property.Should().NotBeNull();
+        }
+
+        public class TryGetDeclaringPropertyClass
+        {
+            public void AMethod() { }
+
+            public string AGetterProperty { get; }
+            public string ASetterProperty { set { } }
+            public string AProperty { get; set; }
+        }
+
+        #endregion [ TryGetDeclaringProperty ]
     }
 }

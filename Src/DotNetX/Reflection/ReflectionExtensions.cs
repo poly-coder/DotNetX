@@ -696,13 +696,13 @@ namespace DotNetX.Reflection
                 if (method.Name.StartsWith("get_"))
                 {
                     property = type
-                        .GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Public)
+                        .GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static)
                         .Where(p => p.GetGetMethod() == method)
                         .FirstOrDefault();
                 } else if (method.Name.StartsWith("set_"))
                 {
                     property = type
-                        .GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Public)
+                        .GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static)
                         .Where(p => p.GetSetMethod() == method)
                         .FirstOrDefault();
                 }
