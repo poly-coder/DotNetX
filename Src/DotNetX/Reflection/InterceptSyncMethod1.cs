@@ -26,10 +26,10 @@ namespace DotNetX.Reflection
             }
 
             return this
+                .ShouldIntercept(interceptors.ShouldIntercept)
                 .Before(interceptors.Before)
                 .After(interceptors.After)
-                .Error(interceptors.Error)
-                .ShouldIntercept(interceptors.ShouldIntercept);
+                .Error(interceptors.Error);
         }
 
         public InterceptSyncMethod<TState> Before(Func<TState> action)

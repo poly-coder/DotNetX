@@ -180,28 +180,11 @@ namespace DotNetX.Tests
                 target => target.VoidMethod("value1"),
                 Times.Once);
 
-            interceptorsMock.Verify(
-                target => target.Before(
-                    targetMock.Object, 
-                    It.Is<MethodInfo>(m => m.Name == nameof(IDummyTarget.VoidMethod)),
-                    new object[] { "value1" }),
-                Times.Once);
+            BeforeCalled(interceptorsMock, targetMock.Object, nameof(IDummyTarget.VoidMethod), "value1");
 
-            interceptorsMock.Verify(
-                target => target.After(
-                    targetMock.Object, 
-                    It.Is<MethodInfo>(m => m.Name == nameof(IDummyTarget.VoidMethod)),
-                    new object[] { "value1" },
-                    null),
-                Times.Once);
+            AfterCalledWith(interceptorsMock, null, targetMock.Object, nameof(IDummyTarget.VoidMethod), "value1");
 
-            interceptorsMock.Verify(
-                target => target.Error(
-                    It.IsAny<object>(), 
-                    It.IsAny<MethodInfo>(),
-                    It.IsAny<object[]>(),
-                    It.IsAny<Exception>()),
-                Times.Never);
+            ErrorNotCalled(interceptorsMock);
         }
 
         [Test]
@@ -686,6 +669,75 @@ namespace DotNetX.Tests
             // Then
             action.Should().Throw<ArgumentNullException>();
         }
+
+        #region [ Helpers ]
+
+        private static void BeforeNotCalled(Mock<IInterceptSyncMethod> interceptorsMock)
+        {
+            interceptorsMock.Verify(
+                t => t.Before(
+                    It.IsAny<object>(),
+                    It.IsAny<MethodInfo>(),
+                    It.IsAny<object[]>()),
+                Times.Never);
+        }
+
+        private static void BeforeCalled(Mock<IInterceptSyncMethod> interceptorsMock, object target, string methodName, string arg1)
+        {
+            interceptorsMock.Verify(
+                t => t.Before(
+                    target,
+                    It.Is<MethodInfo>(m => m.Name == methodName),
+                    new object[] { arg1 }),
+                Times.Once);
+        }
+
+        private static void CompleteNotCalled(Mock<IInterceptSyncMethod> interceptorsMock)
+        {
+            interceptorsMock.Verify(
+                t => t.After(
+                    It.IsAny<object>(),
+                    It.IsAny<MethodInfo>(),
+                    It.IsAny<object[]>(),
+                    It.IsAny<object>()),
+                Times.Never);
+        }
+
+        private static void AfterCalledWith(Mock<IInterceptSyncMethod> interceptorsMock, object? result, object target, string methodName, string arg1)
+        {
+            interceptorsMock.Verify(
+                t => t.After(
+                    target,
+                    It.Is<MethodInfo>(m => m.Name == methodName),
+                    new object[] { arg1 },
+                    result),
+                Times.Once);
+        }
+
+        private static void ErrorNotCalled(Mock<IInterceptSyncMethod> interceptorsMock)
+        {
+            interceptorsMock.Verify(
+                t => t.Error(
+                    It.IsAny<object>(),
+                    It.IsAny<MethodInfo>(),
+                    It.IsAny<object[]>(),
+                    It.IsAny<Exception>()),
+                Times.Never);
+        }
+
+        private static void ErrorCalled<TException>(Mock<IInterceptSyncMethod> interceptorsMock, object target, string methodName, string arg1)
+            where TException : Exception
+        {
+            interceptorsMock.Verify(
+                t => t.Error(
+                    target,
+                    It.Is<MethodInfo>(m => m.Name == methodName),
+                    new object[] { arg1 },
+                    It.IsAny<TException>()),
+                Times.Once);
+        }
+
+        #endregion [ Helpers ]
 
         #endregion [ InterceptSyncMethod ]
 
@@ -1317,6 +1369,9 @@ namespace DotNetX.Tests
         {
             // Given
             var interceptorsMock = new Mock<IInterceptSyncMethod>(MockBehavior.Loose);
+            interceptorsMock
+                .Setup(interceptors => interceptors.ShouldIntercept(It.IsAny<object>(), It.IsAny<MethodInfo>(), It.IsAny<object?[]?>()))
+                .Returns(true);
 
             var targetMock = new Mock<IDummyTarget>(MockBehavior.Strict);
             targetMock
@@ -1365,6 +1420,9 @@ namespace DotNetX.Tests
         {
             // Given
             var interceptorsMock = new Mock<IInterceptAsyncMethod>(MockBehavior.Loose);
+            interceptorsMock
+                .Setup(interceptors => interceptors.ShouldIntercept(It.IsAny<object>(), It.IsAny<MethodInfo>(), It.IsAny<object?[]?>()))
+                .Returns(true);
 
             var targetMock = new Mock<IDummyTarget>(MockBehavior.Strict);
             targetMock
@@ -1413,6 +1471,9 @@ namespace DotNetX.Tests
         {
             // Given
             var interceptorsMock = new Mock<IInterceptSyncMethod>(MockBehavior.Loose);
+            interceptorsMock
+                .Setup(interceptors => interceptors.ShouldIntercept(It.IsAny<object>(), It.IsAny<MethodInfo>(), It.IsAny<object?[]?>()))
+                .Returns(true);
 
             var targetMock = new Mock<IDummyTarget>(MockBehavior.Strict);
             targetMock
@@ -1461,6 +1522,9 @@ namespace DotNetX.Tests
         {
             // Given
             var interceptorsMock = new Mock<IInterceptSyncMethod>(MockBehavior.Loose);
+            interceptorsMock
+                .Setup(interceptors => interceptors.ShouldIntercept(It.IsAny<object>(), It.IsAny<MethodInfo>(), It.IsAny<object?[]?>()))
+                .Returns(true);
 
             var targetMock = new Mock<IDummyTarget>(MockBehavior.Strict);
             targetMock
@@ -1515,6 +1579,9 @@ namespace DotNetX.Tests
         {
             // Given
             var interceptorsMock = new Mock<IInterceptSyncMethod>(MockBehavior.Loose);
+            interceptorsMock
+                .Setup(interceptors => interceptors.ShouldIntercept(It.IsAny<object>(), It.IsAny<MethodInfo>(), It.IsAny<object?[]?>()))
+                .Returns(true);
 
             var targetMock = new Mock<IDummyTarget>(MockBehavior.Strict);
             targetMock
@@ -1569,6 +1636,9 @@ namespace DotNetX.Tests
         {
             // Given
             var interceptorsMock = new Mock<IInterceptSyncMethod>(MockBehavior.Loose);
+            interceptorsMock
+                .Setup(interceptors => interceptors.ShouldIntercept(It.IsAny<object>(), It.IsAny<MethodInfo>(), It.IsAny<object?[]?>()))
+                .Returns(true);
 
             var targetMock = new Mock<IDummyTarget>(MockBehavior.Strict);
             targetMock
@@ -1619,6 +1689,9 @@ namespace DotNetX.Tests
         {
             // Given
             var interceptorsMock = new Mock<IInterceptSyncMethod>(MockBehavior.Loose);
+            interceptorsMock
+                .Setup(interceptors => interceptors.ShouldIntercept(It.IsAny<object>(), It.IsAny<MethodInfo>(), It.IsAny<object?[]?>()))
+                .Returns(true);
 
             var targetMock = new Mock<IDummyTarget>(MockBehavior.Strict);
             targetMock
@@ -1669,6 +1742,9 @@ namespace DotNetX.Tests
         {
             // Given
             var interceptorsMock = new Mock<IInterceptSyncMethod>(MockBehavior.Loose);
+            interceptorsMock
+                .Setup(interceptors => interceptors.ShouldIntercept(It.IsAny<object>(), It.IsAny<MethodInfo>(), It.IsAny<object?[]?>()))
+                .Returns(true);
 
             var targetMock = new Mock<IDummyTarget>(MockBehavior.Strict);
             targetMock
@@ -1723,6 +1799,9 @@ namespace DotNetX.Tests
         {
             // Given
             var interceptorsMock = new Mock<IInterceptSyncMethod>(MockBehavior.Loose);
+            interceptorsMock
+                .Setup(interceptors => interceptors.ShouldIntercept(It.IsAny<object>(), It.IsAny<MethodInfo>(), It.IsAny<object?[]?>()))
+                .Returns(true);
 
             var targetMock = new Mock<IDummyTarget>(MockBehavior.Strict);
             targetMock
@@ -2530,6 +2609,9 @@ namespace DotNetX.Tests
             // Given
             var interceptorsMock = new Mock<IInterceptSyncMethod<string>>(MockBehavior.Loose);
             interceptorsMock
+                .Setup(interceptors => interceptors.ShouldIntercept(It.IsAny<object>(), It.IsAny<MethodInfo>(), It.IsAny<object?[]?>()))
+                .Returns(true);
+            interceptorsMock
                 .Setup(target => target.Before(
                     It.IsAny<object>(),
                     It.IsAny<MethodInfo>(),
@@ -2585,6 +2667,9 @@ namespace DotNetX.Tests
         {
             // Given
             var interceptorsMock = new Mock<IInterceptAsyncMethod<string>>(MockBehavior.Loose);
+            interceptorsMock
+                .Setup(interceptors => interceptors.ShouldIntercept(It.IsAny<object>(), It.IsAny<MethodInfo>(), It.IsAny<object?[]?>()))
+                .Returns(true);
             interceptorsMock
                 .Setup(target => target.Before(
                     It.IsAny<object>(),
@@ -2642,6 +2727,9 @@ namespace DotNetX.Tests
             // Given
             var interceptorsMock = new Mock<IInterceptSyncMethod<string>>(MockBehavior.Loose);
             interceptorsMock
+                .Setup(interceptors => interceptors.ShouldIntercept(It.IsAny<object>(), It.IsAny<MethodInfo>(), It.IsAny<object?[]?>()))
+                .Returns(true);
+            interceptorsMock
                 .Setup(target => target.Before(
                     It.IsAny<object>(),
                     It.IsAny<MethodInfo>(),
@@ -2697,6 +2785,9 @@ namespace DotNetX.Tests
         {
             // Given
             var interceptorsMock = new Mock<IInterceptSyncMethod<string>>(MockBehavior.Loose);
+            interceptorsMock
+                .Setup(interceptors => interceptors.ShouldIntercept(It.IsAny<object>(), It.IsAny<MethodInfo>(), It.IsAny<object?[]?>()))
+                .Returns(true);
             interceptorsMock
                 .Setup(target => target.Before(
                     It.IsAny<object>(),
@@ -2760,6 +2851,9 @@ namespace DotNetX.Tests
             // Given
             var interceptorsMock = new Mock<IInterceptSyncMethod<string>>(MockBehavior.Loose);
             interceptorsMock
+                .Setup(interceptors => interceptors.ShouldIntercept(It.IsAny<object>(), It.IsAny<MethodInfo>(), It.IsAny<object?[]?>()))
+                .Returns(true);
+            interceptorsMock
                 .Setup(target => target.Before(
                     It.IsAny<object>(),
                     It.IsAny<MethodInfo>(),
@@ -2822,6 +2916,9 @@ namespace DotNetX.Tests
             // Given
             var interceptorsMock = new Mock<IInterceptSyncMethod<string>>(MockBehavior.Loose);
             interceptorsMock
+                .Setup(interceptors => interceptors.ShouldIntercept(It.IsAny<object>(), It.IsAny<MethodInfo>(), It.IsAny<object?[]?>()))
+                .Returns(true);
+            interceptorsMock
                 .Setup(target => target.Before(
                     It.IsAny<object>(),
                     It.IsAny<MethodInfo>(),
@@ -2880,6 +2977,9 @@ namespace DotNetX.Tests
             // Given
             var interceptorsMock = new Mock<IInterceptSyncMethod<string>>(MockBehavior.Loose);
             interceptorsMock
+                .Setup(interceptors => interceptors.ShouldIntercept(It.IsAny<object>(), It.IsAny<MethodInfo>(), It.IsAny<object?[]?>()))
+                .Returns(true);
+            interceptorsMock
                 .Setup(target => target.Before(
                     It.IsAny<object>(),
                     It.IsAny<MethodInfo>(),
@@ -2937,6 +3037,9 @@ namespace DotNetX.Tests
         {
             // Given
             var interceptorsMock = new Mock<IInterceptSyncMethod<string>>(MockBehavior.Loose);
+            interceptorsMock
+                .Setup(interceptors => interceptors.ShouldIntercept(It.IsAny<object>(), It.IsAny<MethodInfo>(), It.IsAny<object?[]?>()))
+                .Returns(true);
             interceptorsMock
                 .Setup(target => target.Before(
                     It.IsAny<object>(),
@@ -2999,6 +3102,9 @@ namespace DotNetX.Tests
         {
             // Given
             var interceptorsMock = new Mock<IInterceptSyncMethod<string>>(MockBehavior.Loose);
+            interceptorsMock
+                .Setup(interceptors => interceptors.ShouldIntercept(It.IsAny<object>(), It.IsAny<MethodInfo>(), It.IsAny<object?[]?>()))
+                .Returns(true);
             interceptorsMock
                 .Setup(target => target.Before(
                     It.IsAny<object>(),
@@ -3766,6 +3872,430 @@ namespace DotNetX.Tests
 
         #endregion [ InterceptAsyncMethod ]
 
+        #region [ InterceptEnumerableMethod ]
+
+
+        [Test]
+        public void InterceptEnumerableMethodDefaultShouldHaveAllActionsToNull()
+        {
+            // Given
+            var interceptor = InterceptEnumerableMethod.Default;
+
+            // Then
+            interceptor.BeforeAction.Should().BeNull();
+            interceptor.NextAction.Should().BeNull();
+            interceptor.CompleteAction.Should().BeNull();
+            interceptor.ErrorAction.Should().BeNull();
+            interceptor.ShouldInterceptAction.Should().BeNull();
+        }
+
+        [Test]
+        public void InterceptEnumerableMethodDefaultShouldNotFailWhenIntercepting()
+        {
+            // Given
+            var interceptor = InterceptEnumerableMethod.Default;
+
+            var targetMock = new Mock<IDummyTarget>(MockBehavior.Strict);
+            targetMock
+                .Setup(target => target.EnumerableMethod(It.IsAny<string>()))
+                .Returns(new[] { 1, 2, 3, 4, 5 });
+
+            var intercepted =
+                InterceptorOptions.Default
+                    .Add(interceptor)
+                    .CreateInterceptor(targetMock.Object);
+
+            // When
+            var result = intercepted.EnumerableMethod("value1");
+
+            // Then
+            result.Should().Equal(new[] { 1, 2, 3, 4, 5 });
+
+            targetMock.Verify(
+                target => target.EnumerableMethod("value1"),
+                Times.Once);
+        }
+
+        [Test]
+        public void InterceptEnumerableMethodWithInterceptorsShouldCallBeforeNextAndCompleteInterceptorsOnIEnumerableResult()
+        {
+            // Given
+            var interceptorsMock = new Mock<IInterceptEnumerableMethod>(MockBehavior.Loose);
+            interceptorsMock
+                .Setup(interceptors => interceptors.ShouldIntercept(It.IsAny<object>(), It.IsAny<MethodInfo>(), It.IsAny<object?[]?>()))
+                .Returns(true);
+
+            var targetMock = new Mock<IDummyTarget>(MockBehavior.Strict);
+            targetMock
+                .Setup(target => target.EnumerableMethod(It.IsAny<string>()))
+                .Returns(new[] { 1, 2, 3, 4, 5 });
+
+            var intercepted =
+                InterceptorOptions.Default
+                    .Add(InterceptEnumerableMethod.Default.With(interceptorsMock.Object))
+                    .CreateInterceptor(targetMock.Object);
+
+            // When
+            var result = intercepted.EnumerableMethod("value1");
+
+            // Then
+            result.Should().Equal(new[] { 1, 2, 3, 4, 5 });
+
+            targetMock.Verify(
+                target => target.EnumerableMethod("value1"),
+                Times.Once);
+
+            BeforeCalled(interceptorsMock, targetMock.Object, nameof(IDummyTarget.EnumerableMethod), "value1");
+            
+            NextCalledTimes(interceptorsMock, 5, targetMock.Object, nameof(IDummyTarget.EnumerableMethod), "value1");
+            NextCalledWith(interceptorsMock, 1, targetMock.Object, nameof(IDummyTarget.EnumerableMethod), "value1");
+            NextCalledWith(interceptorsMock, 2, targetMock.Object, nameof(IDummyTarget.EnumerableMethod), "value1");
+            NextCalledWith(interceptorsMock, 3, targetMock.Object, nameof(IDummyTarget.EnumerableMethod), "value1");
+            NextCalledWith(interceptorsMock, 4, targetMock.Object, nameof(IDummyTarget.EnumerableMethod), "value1");
+            NextCalledWith(interceptorsMock, 5, targetMock.Object, nameof(IDummyTarget.EnumerableMethod), "value1");
+
+            CompleteCalled(interceptorsMock, targetMock.Object, nameof(IDummyTarget.EnumerableMethod), "value1");
+
+            ErrorNotCalled(interceptorsMock);
+        }
+
+        [Test]
+        public void InterceptEnumerableMethodWithInterceptorsShouldCallBeforeAndCompleteInterceptorsOnIEnumerableResultWithNull()
+        {
+            // Given
+            var interceptorsMock = new Mock<IInterceptEnumerableMethod>(MockBehavior.Loose);
+            interceptorsMock
+                .Setup(interceptors => interceptors.ShouldIntercept(It.IsAny<object>(), It.IsAny<MethodInfo>(), It.IsAny<object?[]?>()))
+                .Returns(true);
+
+            var targetMock = new Mock<IDummyTarget>(MockBehavior.Strict);
+            targetMock
+                .Setup(target => target.EnumerableMethod(It.IsAny<string>()))
+                .Returns(default(IEnumerable)!);
+
+            var intercepted =
+                InterceptorOptions.Default
+                    .Add(InterceptEnumerableMethod.Default.With(interceptorsMock.Object))
+                    .CreateInterceptor(targetMock.Object);
+
+            // When
+            var result = intercepted.EnumerableMethod("value1");
+
+            // Then
+            result.Should().BeNull();
+
+            targetMock.Verify(
+                target => target.EnumerableMethod("value1"),
+                Times.Once);
+
+            BeforeCalled(interceptorsMock, targetMock.Object, nameof(IDummyTarget.EnumerableMethod), "value1");
+
+            NextNotCalled(interceptorsMock);
+
+            CompleteCalled(interceptorsMock, targetMock.Object, nameof(IDummyTarget.EnumerableMethod), "value1");
+
+            ErrorNotCalled(interceptorsMock);
+        }
+
+        [Test]
+        public void InterceptEnumerableMethodWithInterceptorsShouldCallBeforeAndErrorInterceptorsOnIEnumerableResultWithStartError()
+        {
+            // Given
+            var interceptorsMock = new Mock<IInterceptEnumerableMethod>(MockBehavior.Loose);
+            interceptorsMock
+                .Setup(interceptors => interceptors.ShouldIntercept(It.IsAny<object>(), It.IsAny<MethodInfo>(), It.IsAny<object?[]?>()))
+                .Returns(true);
+
+            var targetMock = new Mock<IDummyTarget>(MockBehavior.Strict);
+            targetMock
+                .Setup(target => target.EnumerableMethod(It.IsAny<string>()))
+                .Throws<FormatException>();
+
+            var intercepted =
+                InterceptorOptions.Default
+                    .Add(InterceptEnumerableMethod.Default.With(interceptorsMock.Object))
+                    .CreateInterceptor(targetMock.Object);
+
+            // When
+            Action action = () => intercepted.EnumerableMethod("value1");
+
+            // Then
+            action.Should().Throw<FormatException>();
+
+            targetMock.Verify(
+                target => target.EnumerableMethod("value1"),
+                Times.Once);
+
+            BeforeCalled(interceptorsMock, targetMock.Object, nameof(IDummyTarget.EnumerableMethod), "value1");
+            
+            NextNotCalled(interceptorsMock);
+            
+            CompleteNotCalled(interceptorsMock);
+
+            ErrorCalled<FormatException>(interceptorsMock, targetMock.Object, nameof(IDummyTarget.EnumerableMethod), "value1");
+        }
+
+        [Test]
+        public void InterceptEnumerableMethodWithInterceptorsShouldCallBeforeAndErrorInterceptorsOnIEnumerableResultWithMiddleError()
+        {
+            // Given
+            IEnumerable MockEnumerable()
+            {
+                yield return 1;
+                yield return 2;
+                yield return 3;
+                throw new FormatException();
+            }
+
+            var interceptorsMock = new Mock<IInterceptEnumerableMethod>(MockBehavior.Loose);
+            interceptorsMock
+                .Setup(interceptors => interceptors.ShouldIntercept(It.IsAny<object>(), It.IsAny<MethodInfo>(), It.IsAny<object?[]?>()))
+                .Returns(true);
+
+            var targetMock = new Mock<IDummyTarget>(MockBehavior.Strict);
+            targetMock
+                .Setup(target => target.EnumerableMethod(It.IsAny<string>()))
+                .Returns((string _) => MockEnumerable());
+
+            var intercepted =
+                InterceptorOptions.Default
+                    .Add(InterceptEnumerableMethod.Default.With(interceptorsMock.Object))
+                    .CreateInterceptor(targetMock.Object);
+
+            // When
+            var result = intercepted.EnumerableMethod("value1");
+            Action action = () => result.Should().Equal(new[] { 1, 2, 3, 4, 5 });
+
+            // Then
+            action.Should().Throw<FormatException>();
+
+            targetMock.Verify(
+                target => target.EnumerableMethod("value1"),
+                Times.Once);
+
+            BeforeCalled(interceptorsMock, targetMock.Object, nameof(IDummyTarget.EnumerableMethod), "value1");
+
+            NextCalledTimes(interceptorsMock, 3, targetMock.Object, nameof(IDummyTarget.EnumerableMethod), "value1");
+            NextCalledWith(interceptorsMock, 1, targetMock.Object, nameof(IDummyTarget.EnumerableMethod), "value1");
+            NextCalledWith(interceptorsMock, 2, targetMock.Object, nameof(IDummyTarget.EnumerableMethod), "value1");
+            NextCalledWith(interceptorsMock, 3, targetMock.Object, nameof(IDummyTarget.EnumerableMethod), "value1");
+
+            CompleteNotCalled(interceptorsMock);
+
+            ErrorCalled<FormatException>(interceptorsMock, targetMock.Object, nameof(IDummyTarget.EnumerableMethod), "value1");
+        }
+
+        [Test]
+        public void InterceptEnumerableMethodWithInterceptorsTurnedOffShouldNotCallInterceptorsOnIEnumerable()
+        {
+            // Given
+            var interceptorsMock = new Mock<IInterceptEnumerableMethod>(MockBehavior.Loose);
+            interceptorsMock
+                .Setup(interceptors => interceptors.ShouldIntercept(It.IsAny<object>(), It.IsAny<MethodInfo>(), It.IsAny<object?[]?>()))
+                .Returns(false);
+
+            var targetMock = new Mock<IDummyTarget>(MockBehavior.Strict);
+            targetMock
+                .Setup(target => target.EnumerableMethod(It.IsAny<string>()))
+                .Returns(new[] { 1, 2, 3, 4, 5 });
+
+            var intercepted =
+                InterceptorOptions.Default
+                    .Add(InterceptEnumerableMethod.Default.With(interceptorsMock.Object))
+                    .CreateInterceptor(targetMock.Object);
+
+            // When
+            var result = intercepted.EnumerableMethod("value1");
+
+            // Then
+            result.Should().Equal(new[] { 1, 2, 3, 4, 5 });
+
+            targetMock.Verify(
+                target => target.EnumerableMethod("value1"),
+                Times.Once);
+
+            BeforeNotCalled(interceptorsMock);
+
+            NextNotCalled(interceptorsMock);
+
+            CompleteNotCalled(interceptorsMock);
+
+            ErrorNotCalled(interceptorsMock);
+        }
+
+        //[Test]
+        //public void InterceptEnumerableMethodWithNullInterceptorsShouldFail()
+        //{
+        //    // Given
+        //    var interceptor = InterceptEnumerableMethod.Default;
+
+        //    // When
+        //    Action action = () => interceptor.With(default!);
+
+        //    // Then
+        //    action.Should().Throw<ArgumentNullException>();
+        //}
+
+        //[Test]
+        //public void InterceptEnumerableMethodShouldIntercept0WithNullShouldFail()
+        //{
+        //    // Given
+        //    var interceptor = InterceptEnumerableMethod.Default;
+
+        //    // When
+        //    Action action = () => interceptor.ShouldIntercept(default(Func<bool>)!);
+
+        //    // Then
+        //    action.Should().Throw<ArgumentNullException>();
+        //}
+
+        //[Test]
+        //public void InterceptEnumerableMethodShouldIntercept0WithActionShouldAssignBeforeAction()
+        //{
+        //    // Given
+        //    var interceptor = InterceptEnumerableMethod.Default;
+
+        //    // When
+        //    interceptor = interceptor.ShouldIntercept(() => true);
+
+        //    // Then
+        //    interceptor.BeforeAction.Should().BeNull();
+        //    interceptor.AfterAction.Should().BeNull();
+        //    interceptor.ErrorAction.Should().BeNull();
+        //    interceptor.ShouldInterceptAction.Should().NotBeNull();
+        //}
+
+        //[Test]
+        //public void InterceptEnumerableMethodShouldIntercept3WithNullShouldFail()
+        //{
+        //    // Given
+        //    var interceptor = InterceptEnumerableMethod.Default;
+
+        //    // When
+        //    Action action = () => interceptor.ShouldIntercept(default(Func<object, MethodInfo, object?[]?, bool>)!);
+
+        //    // Then
+        //    action.Should().Throw<ArgumentNullException>();
+        //}
+
+        //[Test]
+        //public void InterceptEnumerableMethodShouldIntercept3WithActionShouldAssignShouldInterceptAction()
+        //{
+        //    // Given
+        //    var interceptor = InterceptEnumerableMethod.Default;
+
+        //    // When
+        //    interceptor = interceptor.ShouldIntercept((_, _, _) => true);
+
+        //    // Then
+        //    interceptor.BeforeAction.Should().BeNull();
+        //    interceptor.AfterAction.Should().BeNull();
+        //    interceptor.ErrorAction.Should().BeNull();
+        //    interceptor.ShouldInterceptAction.Should().NotBeNull();
+        //}
+
+        #region [ Helpers ]
+
+        private static void BeforeNotCalled(Mock<IInterceptEnumerableMethod> interceptorsMock)
+        {
+            interceptorsMock.Verify(
+                t => t.Before(
+                    It.IsAny<object>(),
+                    It.IsAny<MethodInfo>(),
+                    It.IsAny<object[]>()),
+                Times.Never);
+        }
+
+        private static void BeforeCalled(Mock<IInterceptEnumerableMethod> interceptorsMock, object target, string methodName, string arg1)
+        {
+            interceptorsMock.Verify(
+                t => t.Before(
+                    target,
+                    It.Is<MethodInfo>(m => m.Name == methodName),
+                    new object[] { arg1 }),
+                Times.Once);
+        }
+
+        private static void NextNotCalled(Mock<IInterceptEnumerableMethod> interceptorsMock)
+        {
+            interceptorsMock.Verify(
+                t => t.Next(
+                    It.IsAny<object>(),
+                    It.IsAny<MethodInfo>(),
+                    It.IsAny<object[]>(),
+                    It.IsAny<object>()),
+                Times.Never);
+        }
+
+        private static void NextCalledTimes(Mock<IInterceptEnumerableMethod> interceptorsMock, int times, object target, string methodName, string arg1)
+        {
+            interceptorsMock.Verify(
+                t => t.Next(
+                    target,
+                    It.Is<MethodInfo>(m => m.Name == methodName),
+                    new object[] { arg1 },
+                    It.IsAny<object>()),
+                Times.Exactly(times));
+        }
+
+        private static void NextCalledWith(Mock<IInterceptEnumerableMethod> interceptorsMock, object value, object target, string methodName, string arg1)
+        {
+            interceptorsMock.Verify(
+                t => t.Next(
+                    target,
+                    It.Is<MethodInfo>(m => m.Name == methodName),
+                    new object[] { arg1 },
+                    value),
+                Times.Once);
+        }
+
+        private static void CompleteNotCalled(Mock<IInterceptEnumerableMethod> interceptorsMock)
+        {
+            interceptorsMock.Verify(
+                t => t.Complete(
+                    It.IsAny<object>(),
+                    It.IsAny<MethodInfo>(),
+                    It.IsAny<object[]>()),
+                Times.Never);
+        }
+
+        private static void CompleteCalled(Mock<IInterceptEnumerableMethod> interceptorsMock, object target, string methodName, string arg1)
+        {
+            interceptorsMock.Verify(
+                t => t.Complete(
+                    target,
+                    It.Is<MethodInfo>(m => m.Name == methodName),
+                    new object[] { arg1 }),
+                Times.Once);
+        }
+
+        private static void ErrorNotCalled(Mock<IInterceptEnumerableMethod> interceptorsMock)
+        {
+            interceptorsMock.Verify(
+                t => t.Error(
+                    It.IsAny<object>(),
+                    It.IsAny<MethodInfo>(),
+                    It.IsAny<object[]>(),
+                    It.IsAny<Exception>()),
+                Times.Never);
+        }
+
+        private static void ErrorCalled<TException>(Mock<IInterceptEnumerableMethod> interceptorsMock, object target, string methodName, string arg1)
+            where TException : Exception
+        {
+            interceptorsMock.Verify(
+                t => t.Error(
+                    target,
+                    It.Is<MethodInfo>(m => m.Name == methodName),
+                    new object[] { arg1 },
+                    It.IsAny<TException>()),
+                Times.Once);
+        }
+
+        #endregion [ Helpers ]
+
+        #endregion [ InterceptEnumerableMethod ]
+
         public interface IDummyTarget
         {
             void VoidMethod(string arg1);
@@ -3779,6 +4309,14 @@ namespace DotNetX.Tests
             ValueTask ValueTaskVoidMethod(string arg1);
 
             ValueTask<int> ValueTaskMethod(string arg1);
+
+            IEnumerable EnumerableMethod(string arg1);
+
+            IEnumerable<int> IEnumerableOfTMethod(string arg1);
+
+            IAsyncEnumerable<int> IAsyncEnumerableMethod(string arg1);
+            
+            IObservable<int> IObserableMethod(string arg1);
         }
 
         public record ThrowInterceptMethod() : IInterceptMethod

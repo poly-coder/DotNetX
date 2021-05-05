@@ -28,6 +28,7 @@ namespace DotNetX.Reflection
             }
 
             return this
+                .ShouldIntercept(interceptors.ShouldIntercept)
                 .Before(interceptors.Before)
                 .After(interceptors.After)
                 .Error(interceptors.Error);
@@ -41,6 +42,7 @@ namespace DotNetX.Reflection
             }
 
             return this
+                .ShouldIntercept(interceptors.ShouldIntercept)
                 .Before(interceptors.Before)
                 .After(interceptors.After)
                 .Error(interceptors.Error);
