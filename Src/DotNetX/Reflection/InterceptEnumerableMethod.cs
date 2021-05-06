@@ -207,14 +207,24 @@ namespace DotNetX.Reflection
             if (returnType.TryGetGenericParameters(typeof(IEnumerable<>), out var tResult))
             {
                 var method = InterceptAsIEnumerableOfMethod.MakeGenericMethod(tResult);
-                result = method.Invoke(this, new object?[] { target, targetMethod, args });
+                result = ExceptionExtensions.UnwrapTargetInvocationException(
+                    () => method.Invoke(this, new object?[] { target, targetMethod, args }));
                 return true;
             }
 
             if (returnType.TryGetGenericParameters(typeof(IAsyncEnumerable<>), out tResult))
             {
                 var method = InterceptAsIAsyncEnumerableOfMethod.MakeGenericMethod(tResult);
-                result = method.Invoke(this, new object?[] { target, targetMethod, args });
+                result = ExceptionExtensions.UnwrapTargetInvocationException(
+                    () => method.Invoke(this, new object?[] { target, targetMethod, args }));
+                return true;
+            }
+
+            if (returnType.TryGetGenericParameters(typeof(IObservable<>), out tResult))
+            {
+                var method = InterceptAsIObservableOfMethod.MakeGenericMethod(tResult);
+                result = ExceptionExtensions.UnwrapTargetInvocationException(
+                    () => method.Invoke(this, new object?[] { target, targetMethod, args }));
                 return true;
             }
 
@@ -273,45 +283,39 @@ namespace DotNetX.Reflection
                 }
             }
 
-            try
-            {
-                if (shouldIntercept && BeforeAction != null)
+            return ExceptionExtensions.UnwrapTargetInvocationException<IEnumerable?>(
+                () =>
                 {
-                    BeforeAction(target, targetMethod, args);
-                }
-
-                var result = targetMethod.Invoke(target, args) as IEnumerable;
-
-                if (result != null)
-                {
-                    return Intercept(result);
-                }
-                else
-                {
-                    if (callCompleteAction)
+                    if (shouldIntercept && BeforeAction != null)
                     {
-                        CompleteAction!(target, targetMethod, args);
+                        BeforeAction(target, targetMethod, args);
                     }
 
-                    return result;
-                }
-            }
-            catch (Exception exception)
-            {
-                if (exception is TargetInvocationException ex)
+                    var result = targetMethod.Invoke(target, args) as IEnumerable;
+
+                    if (result != null)
+                    {
+                        return Intercept(result);
+                    }
+                    else
+                    {
+                        if (callCompleteAction)
+                        {
+                            CompleteAction!(target, targetMethod, args);
+                        }
+
+                        return result;
+                    }
+                },
+                exception =>
                 {
-                    exception = ex.InnerException ?? ex;
-                }
+                    if (shouldIntercept && ErrorAction != null)
+                    {
+                        ErrorAction(target, targetMethod, args, exception);
+                    }
 
-                if (shouldIntercept && ErrorAction != null)
-                {
-                    ErrorAction(target, targetMethod, args, exception);
-                }
-
-                ExceptionDispatchInfo.Throw(exception);
-
-                throw;
-            }
+                    return (default, false);
+                });
         }
 
         private static readonly MethodInfo InterceptAsIEnumerableOfMethod =
@@ -330,8 +334,32 @@ namespace DotNetX.Reflection
 
             IEnumerable<T> Intercept(IEnumerable<T> inner)
             {
-                foreach (var item in inner)
+                var enumerator = inner.GetEnumerator();
+
+                while (true)
                 {
+                    bool moved = false;
+                    try
+                    {
+                        moved = enumerator.MoveNext();
+                    }
+                    catch (Exception exception)
+                    {
+                        if (shouldIntercept && ErrorAction != null)
+                        {
+                            ErrorAction(target, targetMethod, args, exception);
+                        }
+
+                        throw;
+                    }
+
+                    if (!moved)
+                    {
+                        break;
+                    }
+
+                    var item = enumerator.Current;
+
                     if (callNextAction)
                     {
                         NextAction!(target, targetMethod, args, item);
@@ -346,45 +374,39 @@ namespace DotNetX.Reflection
                 }
             }
 
-            try
-            {
-                if (shouldIntercept && BeforeAction != null)
+            return ExceptionExtensions.UnwrapTargetInvocationException<IEnumerable<T>?>(
+                () =>
                 {
-                    BeforeAction(target, targetMethod, args);
-                }
-
-                var result = targetMethod.Invoke(target, args) as IEnumerable<T>;
-
-                if (result != null)
-                {
-                    return Intercept(result);
-                }
-                else
-                {
-                    if (callCompleteAction)
+                    if (shouldIntercept && BeforeAction != null)
                     {
-                        CompleteAction!(target, targetMethod, args);
+                        BeforeAction(target, targetMethod, args);
                     }
 
-                    return result;
-                }
-            }
-            catch (Exception exception)
-            {
-                if (exception is TargetInvocationException ex)
+                    var result = targetMethod.Invoke(target, args) as IEnumerable<T>;
+
+                    if (result != null)
+                    {
+                        return Intercept(result);
+                    }
+                    else
+                    {
+                        if (callCompleteAction)
+                        {
+                            CompleteAction!(target, targetMethod, args);
+                        }
+
+                        return result;
+                    }
+                },
+                exception =>
                 {
-                    exception = ex.InnerException ?? ex;
-                }
+                    if (shouldIntercept && ErrorAction != null)
+                    {
+                        ErrorAction(target, targetMethod, args, exception);
+                    }
 
-                if (shouldIntercept && ErrorAction != null)
-                {
-                    ErrorAction(target, targetMethod, args, exception);
-                }
-
-                ExceptionDispatchInfo.Throw(exception);
-
-                throw;
-            }
+                    return (default, false);
+                });
         }
 
         private static readonly MethodInfo InterceptAsIAsyncEnumerableOfMethod =
@@ -419,45 +441,39 @@ namespace DotNetX.Reflection
                 }
             }
 
-            try
-            {
-                if (shouldIntercept && BeforeAction != null)
+            return ExceptionExtensions.UnwrapTargetInvocationException<IAsyncEnumerable<T>?>(
+                () =>
                 {
-                    BeforeAction(target, targetMethod, args);
-                }
-
-                var result = targetMethod.Invoke(target, args) as IAsyncEnumerable<T>;
-
-                if (result != null)
-                {
-                    return Intercept(result);
-                }
-                else
-                {
-                    if (callCompleteAction)
+                    if (shouldIntercept && BeforeAction != null)
                     {
-                        CompleteAction!(target, targetMethod, args);
+                        BeforeAction(target, targetMethod, args);
                     }
 
-                    return result;
-                }
-            }
-            catch (Exception exception)
-            {
-                if (exception is TargetInvocationException ex)
+                    var result = targetMethod.Invoke(target, args) as IAsyncEnumerable<T>;
+
+                    if (result != null)
+                    {
+                        return Intercept(result);
+                    }
+                    else
+                    {
+                        if (callCompleteAction)
+                        {
+                            CompleteAction!(target, targetMethod, args);
+                        }
+
+                        return result;
+                    }
+                },
+                exception =>
                 {
-                    exception = ex.InnerException ?? ex;
-                }
+                    if (shouldIntercept && ErrorAction != null)
+                    {
+                        ErrorAction(target, targetMethod, args, exception);
+                    }
 
-                if (shouldIntercept && ErrorAction != null)
-                {
-                    ErrorAction(target, targetMethod, args, exception);
-                }
-
-                ExceptionDispatchInfo.Throw(exception);
-
-                throw;
-            }
+                    return (default, false);
+                });
         }
 
         private static readonly MethodInfo InterceptAsIObservableOfMethod =
@@ -502,48 +518,42 @@ namespace DotNetX.Reflection
                         }));
             }
 
-            try
-            {
-                if (shouldIntercept && BeforeAction != null)
+            return ExceptionExtensions.UnwrapTargetInvocationException<IObservable<T>?>(
+                () =>
                 {
-                    BeforeAction(target, targetMethod, args);
-                }
-
-                var result = targetMethod.Invoke(target, args) as IObservable<T>;
-
-                if (result != null)
-                {
-                    return Intercept(result);
-                }
-                else
-                {
-                    if (callCompleteAction)
+                    if (shouldIntercept && BeforeAction != null)
                     {
-                        CompleteAction!(target, targetMethod, args);
+                        BeforeAction(target, targetMethod, args);
                     }
 
-                    return result;
-                }
-            }
-            catch (Exception exception)
-            {
-                if (exception is TargetInvocationException ex)
+                    var result = targetMethod.Invoke(target, args) as IObservable<T>;
+
+                    if (result != null)
+                    {
+                        return Intercept(result);
+                    }
+                    else
+                    {
+                        if (callCompleteAction)
+                        {
+                            CompleteAction!(target, targetMethod, args);
+                        }
+
+                        return result;
+                    }
+                },
+                exception =>
                 {
-                    exception = ex.InnerException ?? ex;
-                }
+                    if (shouldIntercept && ErrorAction != null)
+                    {
+                        ErrorAction(target, targetMethod, args, exception);
+                    }
 
-                if (shouldIntercept && ErrorAction != null)
-                {
-                    ErrorAction(target, targetMethod, args, exception);
-                }
-
-                ExceptionDispatchInfo.Throw(exception);
-
-                throw;
-            }
+                    return (default, false);
+                });
         }
-
     }
+
     class IntercepterObservable<T> : IObservable<T>
     {
         private readonly IObservable<T> inner;

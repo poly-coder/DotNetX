@@ -333,14 +333,16 @@ namespace DotNetX.Reflection
             if (returnType.TryGetGenericParameters(typeof(Task<>), out var tResult))
             {
                 var method = InterceptAsTaskOfMethod.MakeGenericMethod(tResult);
-                result = method.Invoke(this, new object?[] { target, targetMethod, args });
+                result = ExceptionExtensions.UnwrapTargetInvocationException(
+                    () => method.Invoke(this, new object?[] { target, targetMethod, args }));
                 return true;
             }
 
             if (returnType.TryGetGenericParameters(typeof(ValueTask<>), out tResult))
             {
                 var method = InterceptAsValueTaskOfMethod.MakeGenericMethod(tResult);
-                result = method.Invoke(this, new object?[] { target, targetMethod, args });
+                result = ExceptionExtensions.UnwrapTargetInvocationException(
+                    () => method.Invoke(this, new object?[] { target, targetMethod, args }));
                 return true;
             }
 
@@ -356,33 +358,27 @@ namespace DotNetX.Reflection
 
             var state = shouldIntercept ? await BeforeAction!(target, targetMethod, args) : default;
 
-            try
-            {
-                Task resultTask = (Task)targetMethod.Invoke(target, args);
-
-                await resultTask;
-
-                if (shouldIntercept && AfterAction != null)
+            await ExceptionExtensions.UnwrapTargetInvocationExceptionAsync(
+                async () =>
                 {
-                    await AfterAction(state!, target, targetMethod, args, null);
-                }
-            }
-            catch (Exception exception)
-            {
-                if (exception is TargetInvocationException ex)
+                    Task resultTask = (Task)targetMethod.Invoke(target, args)!;
+
+                    await resultTask;
+
+                    if (shouldIntercept && AfterAction != null)
+                    {
+                        await AfterAction(state!, target, targetMethod, args, null);
+                    }
+                },
+                async exception =>
                 {
-                    exception = ex.InnerException ?? ex;
-                }
+                    if (shouldIntercept && ErrorAction != null)
+                    {
+                        await ErrorAction(state!, target, targetMethod, args, exception);
+                    }
 
-                if (shouldIntercept && ErrorAction != null)
-                {
-                    await ErrorAction(state!, target, targetMethod, args, exception);
-                }
-
-                ExceptionDispatchInfo.Throw(exception);
-
-                throw;
-            }
+                    return false;
+                });
         }
 
         private static readonly MethodInfo InterceptAsTaskOfMethod =
@@ -398,42 +394,36 @@ namespace DotNetX.Reflection
 
             var state = shouldIntercept ? await BeforeAction!(target, targetMethod, args) : default;
 
-            try
-            {
-                Task resultTask = (Task)targetMethod.Invoke(target, args);
-
-                await resultTask;
-
-                var result = typeof(Task<T>).InvokeMember(
-                    nameof(Task<T>.Result),
-                    BindingFlags.Public | BindingFlags.Instance | BindingFlags.GetProperty,
-                    binder: null,
-                    resultTask,
-                    args: null);
-
-                if (shouldIntercept && AfterAction != null)
+            return await ExceptionExtensions.UnwrapTargetInvocationExceptionAsync<T>(
+                async () =>
                 {
-                    await AfterAction(state!, target, targetMethod, args, result);
-                }
+                    Task resultTask = (Task)targetMethod.Invoke(target, args)!;
 
-                return (T)result;
-            }
-            catch (Exception exception)
-            {
-                if (exception is TargetInvocationException ex)
+                    await resultTask;
+
+                    var result = typeof(Task<T>).InvokeMember(
+                        nameof(Task<T>.Result),
+                        BindingFlags.Public | BindingFlags.Instance | BindingFlags.GetProperty,
+                        binder: null,
+                        resultTask,
+                        args: null);
+
+                    if (shouldIntercept && AfterAction != null)
+                    {
+                        await AfterAction(state!, target, targetMethod, args, result);
+                    }
+
+                    return (T)result!;
+                },
+                async exception =>
                 {
-                    exception = ex.InnerException ?? ex;
-                }
+                    if (shouldIntercept && ErrorAction != null)
+                    {
+                        await ErrorAction(state!, target, targetMethod, args, exception);
+                    }
 
-                if (shouldIntercept && ErrorAction != null)
-                {
-                    await ErrorAction(state!, target, targetMethod, args, exception);
-                }
-
-                ExceptionDispatchInfo.Throw(exception);
-
-                throw;
-            }
+                    return (default(T), false);
+                });
         }
 
         private async ValueTask InterceptAsValueTask(object target, MethodInfo targetMethod, object?[]? args)
@@ -444,33 +434,27 @@ namespace DotNetX.Reflection
 
             var state = shouldIntercept ? await BeforeAction!(target, targetMethod, args) : default;
 
-            try
-            {
-                var resultTask = (ValueTask)targetMethod.Invoke(target, args);
-
-                await resultTask;
-
-                if (shouldIntercept && AfterAction != null)
+            await ExceptionExtensions.UnwrapTargetInvocationExceptionAsync(
+                async () =>
                 {
-                    await AfterAction(state!, target, targetMethod, args, null);
-                }
-            }
-            catch (Exception exception)
-            {
-                if (exception is TargetInvocationException ex)
+                    var resultTask = (ValueTask)targetMethod.Invoke(target, args)!;
+
+                    await resultTask;
+
+                    if (shouldIntercept && AfterAction != null)
+                    {
+                        await AfterAction(state!, target, targetMethod, args, null);
+                    }
+                },
+                async exception =>
                 {
-                    exception = ex.InnerException ?? ex;
-                }
+                    if (shouldIntercept && ErrorAction != null)
+                    {
+                        await ErrorAction(state!, target, targetMethod, args, exception);
+                    }
 
-                if (shouldIntercept && ErrorAction != null)
-                {
-                    await ErrorAction(state!, target, targetMethod, args, exception);
-                }
-
-                ExceptionDispatchInfo.Throw(exception);
-
-                throw;
-            }
+                    return false;
+                });
         }
 
         private static readonly MethodInfo InterceptAsValueTaskOfMethod =
@@ -486,42 +470,36 @@ namespace DotNetX.Reflection
 
             var state = shouldIntercept ? await BeforeAction!(target, targetMethod, args) : default;
 
-            try
-            {
-                ValueTask<T> resultTask = (ValueTask<T>)targetMethod.Invoke(target, args);
-
-                await resultTask;
-
-                var result = typeof(ValueTask<T>).InvokeMember(
-                    nameof(ValueTask<T>.Result),
-                    BindingFlags.Public | BindingFlags.Instance | BindingFlags.GetProperty,
-                    binder: null,
-                    resultTask,
-                    args: null);
-
-                if (shouldIntercept && AfterAction != null)
+            return await ExceptionExtensions.UnwrapTargetInvocationExceptionAsync<T>(
+                async () =>
                 {
-                    await AfterAction(state!, target, targetMethod, args, result);
-                }
+                    ValueTask<T> resultTask = (ValueTask<T>)targetMethod.Invoke(target, args);
 
-                return (T)result;
-            }
-            catch (Exception exception)
-            {
-                if (exception is TargetInvocationException ex)
+                    await resultTask;
+
+                    var result = typeof(ValueTask<T>).InvokeMember(
+                        nameof(ValueTask<T>.Result),
+                        BindingFlags.Public | BindingFlags.Instance | BindingFlags.GetProperty,
+                        binder: null,
+                        resultTask,
+                        args: null);
+
+                    if (shouldIntercept && AfterAction != null)
+                    {
+                        await AfterAction(state!, target, targetMethod, args, result);
+                    }
+
+                    return (T)result;
+                },
+                async exception =>
                 {
-                    exception = ex.InnerException ?? ex;
-                }
+                    if (shouldIntercept && ErrorAction != null)
+                    {
+                        await ErrorAction(state!, target, targetMethod, args, exception);
+                    }
 
-                if (shouldIntercept && ErrorAction != null)
-                {
-                    await ErrorAction(state!, target, targetMethod, args, exception);
-                }
-
-                ExceptionDispatchInfo.Throw(exception);
-
-                throw;
-            }
+                    return (default(T), false);
+                });
         }
     }
 }
