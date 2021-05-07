@@ -246,8 +246,32 @@ namespace DotNetX.Reflection
 
             IEnumerable Intercept(IEnumerable inner)
             {
-                foreach (var item in inner)
+                var enumerator = inner.GetEnumerator();
+
+                while (true)
                 {
+                    bool moved = false;
+                    try
+                    {
+                        moved = enumerator.MoveNext();
+                    }
+                    catch (Exception exception)
+                    {
+                        if (shouldIntercept && ErrorAction != null)
+                        {
+                            ErrorAction(state!, target, targetMethod, args, exception);
+                        }
+
+                        throw;
+                    }
+
+                    if (!moved)
+                    {
+                        break;
+                    }
+
+                    var item = enumerator.Current;
+
                     if (callNextAction)
                     {
                         NextAction!(state!, target, targetMethod, args, item);
@@ -311,8 +335,32 @@ namespace DotNetX.Reflection
 
             IEnumerable<T> Intercept(IEnumerable<T> inner)
             {
-                foreach (var item in inner)
+                var enumerator = inner.GetEnumerator();
+
+                while (true)
                 {
+                    bool moved = false;
+                    try
+                    {
+                        moved = enumerator.MoveNext();
+                    }
+                    catch (Exception exception)
+                    {
+                        if (shouldIntercept && ErrorAction != null)
+                        {
+                            ErrorAction(state!, target, targetMethod, args, exception);
+                        }
+
+                        throw;
+                    }
+
+                    if (!moved)
+                    {
+                        break;
+                    }
+
+                    var item = enumerator.Current;
+
                     if (callNextAction)
                     {
                         NextAction!(state!, target, targetMethod, args, item);
@@ -377,8 +425,32 @@ namespace DotNetX.Reflection
 
             async IAsyncEnumerable<T> Intercept(IAsyncEnumerable<T> inner)
             {
-                await foreach (var item in inner)
+                var enumerator = inner.GetAsyncEnumerator();
+
+                while (true)
                 {
+                    bool moved = false;
+                    try
+                    {
+                        moved = await enumerator.MoveNextAsync();
+                    }
+                    catch (Exception exception)
+                    {
+                        if (shouldIntercept && ErrorAction != null)
+                        {
+                            ErrorAction(state!, target, targetMethod, args, exception);
+                        }
+
+                        throw;
+                    }
+
+                    if (!moved)
+                    {
+                        break;
+                    }
+
+                    var item = enumerator.Current;
+
                     if (callNextAction)
                     {
                         NextAction!(state!, target, targetMethod, args, item);

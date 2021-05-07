@@ -425,8 +425,32 @@ namespace DotNetX.Reflection
 
             async IAsyncEnumerable<T> Intercept(IAsyncEnumerable<T> inner)
             {
-                await foreach (var item in inner)
+                var enumerator = inner.GetAsyncEnumerator();
+
+                while (true)
                 {
+                    bool moved = false;
+                    try
+                    {
+                        moved = await enumerator.MoveNextAsync();
+                    }
+                    catch (Exception exception)
+                    {
+                        if (shouldIntercept && ErrorAction != null)
+                        {
+                            ErrorAction(target, targetMethod, args, exception);
+                        }
+
+                        throw;
+                    }
+
+                    if (!moved)
+                    {
+                        break;
+                    }
+
+                    var item = enumerator.Current;
+
                     if (callNextAction)
                     {
                         NextAction!(target, targetMethod, args, item);
