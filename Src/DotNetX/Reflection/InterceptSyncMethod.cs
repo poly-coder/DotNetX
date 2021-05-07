@@ -26,10 +26,10 @@ namespace DotNetX.Reflection
             }
 
             return this
+                .ShouldIntercept(interceptors.ShouldIntercept)
                 .Before(interceptors.Before)
                 .After(interceptors.After)
-                .Error(interceptors.Error)
-                .ShouldIntercept(interceptors.ShouldIntercept);
+                .Error(interceptors.Error);
         }
 
         public InterceptSyncMethod Before(Action action)
@@ -168,38 +168,34 @@ namespace DotNetX.Reflection
                 ShouldInterceptAction == null || 
                 ShouldInterceptAction(target, targetMethod, args);
 
-            try
-            {
-                if (shouldIntercept && BeforeAction != null)
+            result = ExceptionExtensions.UnwrapTargetInvocationException<object?>(
+                () =>
                 {
-                    BeforeAction.Invoke(target, targetMethod, args);
-                }
+                    if (shouldIntercept && BeforeAction != null)
+                    {
+                        BeforeAction.Invoke(target, targetMethod, args);
+                    }
 
-                result = targetMethod.Invoke(target, args);
+                    var methodResult = targetMethod.Invoke(target, args);
 
-                if (shouldIntercept && AfterAction != null)
+                    if (shouldIntercept && AfterAction != null)
+                    {
+                        AfterAction.Invoke(target, targetMethod, args, methodResult);
+                    }
+
+                    return methodResult;
+                },
+                exception =>
                 {
-                    AfterAction.Invoke(target, targetMethod, args, result);
-                }
+                    if (shouldIntercept && ErrorAction != null)
+                    {
+                        ErrorAction.Invoke(target, targetMethod, args, exception);
+                    }
 
-                return true;
-            }
-            catch (Exception exception)
-            {
-                if (exception is TargetInvocationException ex)
-                {
-                    exception = ex.InnerException ?? ex;
-                }
+                    return (default, false);
+                });
 
-                if (shouldIntercept && ErrorAction != null)
-                {
-                    ErrorAction.Invoke(target, targetMethod, args, exception);
-                }
-
-                ExceptionDispatchInfo.Throw(exception);
-
-                throw;
-            }
+            return true;
         }
     }
 }

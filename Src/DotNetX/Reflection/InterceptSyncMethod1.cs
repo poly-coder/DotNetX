@@ -26,10 +26,10 @@ namespace DotNetX.Reflection
             }
 
             return this
+                .ShouldIntercept(interceptors.ShouldIntercept)
                 .Before(interceptors.Before)
                 .After(interceptors.After)
-                .Error(interceptors.Error)
-                .ShouldIntercept(interceptors.ShouldIntercept);
+                .Error(interceptors.Error);
         }
 
         public InterceptSyncMethod<TState> Before(Func<TState> action)
@@ -170,33 +170,29 @@ namespace DotNetX.Reflection
 
             var state = shouldIntercept ? BeforeAction!(target, targetMethod, args) : default;
 
-            try
-            {
-                result = targetMethod.Invoke(target, args);
-
-                if (shouldIntercept && AfterAction != null)
+            result = ExceptionExtensions.UnwrapTargetInvocationException<object?>(
+                () =>
                 {
-                    AfterAction.Invoke(state!, target, targetMethod, args, result);
-                }
+                    var methodResult = targetMethod.Invoke(target, args);
 
-                return true;
-            }
-            catch (Exception exception)
-            {
-                if (exception is TargetInvocationException ex)
+                    if (shouldIntercept && AfterAction != null)
+                    {
+                        AfterAction.Invoke(state!, target, targetMethod, args, methodResult);
+                    }
+
+                    return methodResult;
+                },
+                exception =>
                 {
-                    exception = ex.InnerException ?? ex;
-                }
+                    if (shouldIntercept && ErrorAction != null)
+                    {
+                        ErrorAction.Invoke(state!, target, targetMethod, args, exception);
+                    }
 
-                if (shouldIntercept && ErrorAction != null)
-                {
-                    ErrorAction.Invoke(state!, target, targetMethod, args, exception);
-                }
+                    return (default, false);
+                });
 
-                ExceptionDispatchInfo.Throw(exception);
-                
-                throw;
-            }
+            return true;
         }
     }
 }

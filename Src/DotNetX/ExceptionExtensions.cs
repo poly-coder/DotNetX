@@ -1,6 +1,8 @@
 using System;
 using System.Reflection;
+using System.Runtime.ExceptionServices;
 using System.Runtime.Serialization;
+using System.Threading.Tasks;
 
 namespace DotNetX
 {
@@ -90,5 +92,164 @@ namespace DotNetX
 
             }
         }
+
+        #region [ UnwrapTargetInvocationException ]
+
+        public static void UnwrapTargetInvocationException(
+            Action action,
+            Func<Exception, bool>? handledException = null)
+        {
+            try
+            {
+                action();
+            }
+            catch (Exception exception)
+            {
+                if (exception is TargetInvocationException ex)
+                {
+                    exception = ex.InnerException ?? ex;
+                }
+
+                var handled = handledException?.Invoke(exception) ?? false;
+
+                if (!handled)
+                {
+                    ExceptionDispatchInfo.Throw(exception);
+                }
+            }
+        }
+
+        public static T UnwrapTargetInvocationException<T>(
+            Func<T> action,
+            Func<Exception, (T?, bool)>? handledException = null)
+        {
+            try
+            {
+                return action();
+            }
+            catch (Exception exception)
+            {
+                if (exception is TargetInvocationException ex)
+                {
+                    exception = ex.InnerException ?? ex;
+                }
+
+                var (result, handled) = handledException?.Invoke(exception) ?? (default(T), false);
+
+                if (!handled)
+                {
+                    ExceptionDispatchInfo.Throw(exception);
+                }
+
+                return result!;
+            }
+        }
+
+        public static async Task UnwrapTargetInvocationExceptionAsync(
+            Func<Task> action,
+            Func<Exception, bool>? handledException = null)
+        {
+            try
+            {
+                await action();
+            }
+            catch (Exception exception)
+            {
+                if (exception is TargetInvocationException ex)
+                {
+                    exception = ex.InnerException ?? ex;
+                }
+
+                var handled = handledException?.Invoke(exception) ?? false;
+
+                if (!handled)
+                {
+                    ExceptionDispatchInfo.Throw(exception);
+                }
+            }
+        }
+
+        public static async Task UnwrapTargetInvocationExceptionAsync(
+            Func<Task> action,
+            Func<Exception, Task<bool>>? handledException = null)
+        {
+            try
+            {
+                await action();
+            }
+            catch (Exception exception)
+            {
+                if (exception is TargetInvocationException ex)
+                {
+                    exception = ex.InnerException ?? ex;
+                }
+
+                var handled = handledException != null
+                    ? (await handledException(exception)) 
+                    : false;
+
+                if (!handled)
+                {
+                    ExceptionDispatchInfo.Throw(exception);
+                }
+            }
+        }
+
+        public static async Task<T> UnwrapTargetInvocationExceptionAsync<T>(
+            Func<Task<T>> action,
+            Func<Exception, (T?, bool)>? handledException = null)
+        {
+            try
+            {
+                return await action();
+            }
+            catch (Exception exception)
+            {
+                if (exception is TargetInvocationException ex)
+                {
+                    exception = ex.InnerException ?? ex;
+                }
+
+                var (result, handled) = handledException?.Invoke(exception) ?? (default(T), false);
+
+                if (!handled)
+                {
+                    ExceptionDispatchInfo.Throw(exception);
+                }
+
+                return result!;
+            }
+        }
+
+        public static async Task<T> UnwrapTargetInvocationExceptionAsync<T>(
+            Func<Task<T>> action,
+            Func<Exception, Task<(T?, bool)>>? handledException = null)
+        {
+            try
+            {
+                return await action();
+            }
+            catch (Exception exception)
+            {
+                if (exception is TargetInvocationException ex)
+                {
+                    exception = ex.InnerException ?? ex;
+                }
+
+                var (result, handled) = handledException != null
+                    ? (await handledException(exception))
+                    : (default(T), false);
+
+                if (!handled)
+                {
+                    ExceptionDispatchInfo.Throw(exception);
+                }
+
+                return result!;
+            }
+        }
+
+        #endregion [ UnwrapTargetInvocationException ]
+
     }
 }
