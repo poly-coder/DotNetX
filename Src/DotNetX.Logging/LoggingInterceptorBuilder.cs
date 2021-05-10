@@ -170,7 +170,7 @@ namespace DotNetX.Logging
         public LoggingInterceptorBuilder InterceptEnumerables()
         {
             CheckNotBuilt();
-            interceptEnumerables = false;
+            interceptEnumerables = true;
             return this;
         }
 
@@ -184,7 +184,7 @@ namespace DotNetX.Logging
         public LoggingInterceptorBuilder InterceptAsync()
         {
             CheckNotBuilt();
-            interceptAsync = false;
+            interceptAsync = true;
             return this;
         }
 
@@ -198,7 +198,7 @@ namespace DotNetX.Logging
         public LoggingInterceptorBuilder InterceptProperties()
         {
             CheckNotBuilt();
-            interceptProperties = false;
+            interceptProperties = true;
             return this;
         }
 
@@ -1108,7 +1108,7 @@ namespace DotNetX.Logging
 
                         if (interceptAsync)
                         {
-                            if (returnType == typeof(Task))
+                            if (returnType == typeof(Task) || returnType == typeof(ValueTask))
                             {
                                 return typeof(void);
                             }
@@ -1175,6 +1175,11 @@ namespace DotNetX.Logging
             {
                 if (builder.getParameters != null)
                 {
+                    if (builder.parametersExtractors.Any())
+                    {
+                        throw new InvalidOperationException("When getParameters is provided, no other parameter extractor should be provided");
+                    }
+
                     return builder.getParameters;
                 }
                 else if (builder.parametersExtractors.Any())
