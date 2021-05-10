@@ -1,6 +1,7 @@
 ﻿using DotNetX.Reflection;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -8,6 +9,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 
 namespace DotNetX.Logging
 {
@@ -59,9 +61,9 @@ namespace DotNetX.Logging
 
         public LoggingInterceptorBuilder WithLoggerFactory(Func<ILoggerFactory, MethodInfo, ILogger> loggerFromMethod)
         {
-            if (loggerFactory is null)
+            if (loggerFromMethod is null)
             {
-                throw new ArgumentNullException(nameof(loggerFactory));
+                throw new ArgumentNullException(nameof(loggerFromMethod));
             }
 
             CheckNotBuilt();
@@ -71,9 +73,9 @@ namespace DotNetX.Logging
 
         public LoggingInterceptorBuilder WithLoggerFactory(Func<MethodInfo, ILogger> statefulLoggerFromMethod)
         {
-            if (loggerFactory is null)
+            if (statefulLoggerFromMethod is null)
             {
-                throw new ArgumentNullException(nameof(loggerFactory));
+                throw new ArgumentNullException(nameof(statefulLoggerFromMethod));
             }
 
             CheckNotBuilt();
@@ -149,9 +151,6 @@ namespace DotNetX.Logging
             this.options = options;
             return this;
         }
-
-        public LoggingInterceptorBuilder WithDefaultOptions() =>
-            WithOptions(new LoggingInterceptorOptions());
 
         #endregion [ Options ]
 
@@ -710,17 +709,17 @@ namespace DotNetX.Logging
 
             #region [ ShouldIntercept ]
 
-            private static ConcurrentDictionary<MethodInfo, bool> shouldInterceptCache =
+            private ConcurrentDictionary<MethodInfo, bool> shouldInterceptCache =
                 new ConcurrentDictionary<MethodInfo, bool>();
 
             public bool ShouldIntercept(object target, MethodInfo targetMethod, object?[]? args)
             {
                 return shouldInterceptCache.GetOrAdd(
                     targetMethod,
-                    m => !m.TryGetDeclaringProperty(out var _));
+                    ComputeShouldIntercept);
             }
 
-            public bool ComputeShouldIntercept(MethodInfo targetMethod)
+            private bool ComputeShouldIntercept(MethodInfo targetMethod)
             {
                 if (!interceptProperties && targetMethod.TryGetDeclaringProperty(out var _))
                 {
@@ -1018,6 +1017,11 @@ namespace DotNetX.Logging
                         throw new InvalidOperationException("No ILoggerFactory was provided");
                     }
 
+                    if (builder.loggerCategoryNames.Any())
+                    {
+                        throw new InvalidOperationException("When logger factory is set, no other logging method should be provided");
+                    }
+
                     var loggerSource = builder.loggerFactory;
                     var factory = builder.loggerFromMethod;
 
@@ -1034,12 +1038,21 @@ namespace DotNetX.Logging
 
                     ILogger CreateLogger(MethodInfo targetMethod)
                     {
-                        if (targetMethod.DeclaringType == null ||
-                            !loggerCategoryNames.TryGetValue(targetMethod.DeclaringType, out var categoryName) ||
-                            (categoryName = targetMethod.DeclaringType?.FullName) == null)
+                        string? categoryName = null;
+
+                        if (targetMethod.DeclaringType != null)
                         {
-                            categoryName = options.UnknownCategoryName;
+                            if (loggerCategoryNames.TryGetValue(targetMethod.DeclaringType, out categoryName))
+                            {
+
+                            }
+                            else if ((categoryName = targetMethod.DeclaringType.FullName) != null)
+                            {
+
+                            }
                         }
+
+                        categoryName ??= options.UnknownCategoryName;
 
                         return loggerCache.GetOrAdd(
                             categoryName,
@@ -1051,7 +1064,6 @@ namespace DotNetX.Logging
                 else
                 {
                     throw new InvalidOperationException("No logger factory was provided");
-
                 }
             }
 
@@ -1075,9 +1087,45 @@ namespace DotNetX.Logging
                     var interceptAsync = builder.interceptAsync;
                     var interceptEnumerables = builder.interceptEnumerables;
 
+                    Type GetMethodResultType(MethodInfo method)
+                    {
+                        var returnType = method.ReturnType;
+
+                        if (interceptEnumerables)
+                        {
+                            if (returnType == typeof(IEnumerable))
+                            {
+                                return typeof(object);
+                            }
+
+                            if (returnType.TryGetGenericParameters(typeof(IEnumerable<>), out var resultType) ||
+                                returnType.TryGetGenericParameters(typeof(IAsyncEnumerable<>), out resultType) ||
+                                returnType.TryGetGenericParameters(typeof(IObservable<>), out resultType))
+                            {
+                                return resultType;
+                            }
+                        }
+
+                        if (interceptAsync)
+                        {
+                            if (returnType == typeof(Task))
+                            {
+                                return typeof(void);
+                            }
+
+                            if (returnType.TryGetGenericParameters(typeof(Task<>), out var resultType) ||
+                                returnType.TryGetGenericParameters(typeof(ValueTask<>), out resultType))
+                            {
+                                return resultType;
+                            }
+                        }
+
+                        return returnType;
+                    }
+                    
                     Func<object?, object?> GetExtractors(MethodInfo method)
                     {
-                        var methodResult = GetMethodResultType(method, interceptAsync, interceptEnumerables);
+                        var methodResult = GetMethodResultType(method);
 
                         var extractors = allExtractors
                             .Where(e => e.Predicate(method, methodResult))
@@ -1103,7 +1151,12 @@ namespace DotNetX.Logging
                                     }
                                 }
 
-                                return dict;
+                                if (dict.Any())
+                                {
+                                    return dict;
+                                }
+
+                                return null;
                             }
 
                             return Extract;
@@ -1118,18 +1171,79 @@ namespace DotNetX.Logging
                 return (_, _) => null;
             }
 
-            private static Type GetMethodResultType(MethodInfo method, bool interceptAsync, bool interceptEnumerables)
-            {
-            }
-
             private static Func<MethodInfo, object?[]?, object?> CreateGetParameters(LoggingInterceptorBuilder builder)
             {
                 if (builder.getParameters != null)
                 {
                     return builder.getParameters;
                 }
+                else if (builder.parametersExtractors.Any())
+                {
+                    ConcurrentDictionary<MethodInfo, Func<object?[]?, object?>> extractorsCache =
+                        new ConcurrentDictionary<MethodInfo, Func<object?[]?, object?>>();
 
-                //return (_, _) => null;
+                    var allExtractors = builder.parametersExtractors;
+
+                    Func<object?[]?, object?> GetExtractors(MethodInfo method)
+                    {
+                        var parameters = method.GetParameters();
+
+                        var extractors = parameters
+                            .SelectMany((parameter, index) => allExtractors
+                                .Where(e => e.Predicate(method, parameter.ParameterType, parameter.Name!))
+                                .Select(e => (Index: index, e.Extract)))
+                            .GroupBy(p => p.Index)
+                            .ToDictionary(
+                                g => g.Key,
+                                g => g.Select(e => e.Extract).ToArray());
+
+                        if (extractors.Any())
+                        {
+                            object? Extract(object?[]? args)
+                            {
+                                if (args == null || args.Length != parameters!.Length)
+                                {
+                                    return null;
+                                }
+
+                                var dict = new Dictionary<string, object?>();
+
+                                foreach (var paramExtractors in extractors)
+                                {
+                                    var value = args[paramExtractors.Key];
+
+                                    foreach (var extractor in paramExtractors.Value)
+                                    {
+                                        var data = extractor(value);
+
+                                        if (data != null)
+                                        {
+                                            foreach (var pair in data)
+                                            {
+                                                dict[pair.Key] = pair.Value;
+                                            }
+                                        }
+                                    }
+                                }
+
+                                if (dict.Any())
+                                {
+                                    return dict;
+                                }
+
+                                return null;
+                            }
+
+                            return Extract;
+                        }
+
+                        return _ => null;
+                    }
+
+                    return (method, args) => extractorsCache.GetOrAdd(method, GetExtractors)(args);
+                }
+
+                return (_, _) => null;
             }
 
             #endregion [ Internal ]
