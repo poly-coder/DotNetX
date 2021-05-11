@@ -258,7 +258,7 @@ namespace DotNetX.Logging
 
         record ParametersExtractor(
             Func<MethodInfo, Type, string, bool> Predicate,
-            Func<object?, IEnumerable<KeyValuePair<string, object?>>?> Extract);
+            Func<object?, object?> Extract);
 
         private List<ParametersExtractor> parametersExtractors = new List<ParametersExtractor>();
 
@@ -276,7 +276,7 @@ namespace DotNetX.Logging
 
         public LoggingInterceptorBuilder LogParameter(
             Func<MethodInfo, Type, string, bool> predicate,
-            Func<object?, IEnumerable<KeyValuePair<string, object?>>?> extract)
+            Func<object?, object?> extract)
         {
             if (predicate is null)
             {
@@ -297,7 +297,7 @@ namespace DotNetX.Logging
             string methodName,
             Type type,
             string name,
-            Func<object?, IEnumerable<KeyValuePair<string, object?>>?> extract)
+            Func<object?, object?> extract)
         {
             if (methodName is null)
             {
@@ -330,7 +330,7 @@ namespace DotNetX.Logging
         public LoggingInterceptorBuilder LogParameter<T>(
             string methodName,
             string name,
-            Func<T, IEnumerable<KeyValuePair<string, object?>>?> extract) =>
+            Func<T, object?> extract) =>
             LogParameter(
                 methodName, typeof(T), name,
                 obj => obj is T t ? extract(t) : null);
@@ -338,7 +338,7 @@ namespace DotNetX.Logging
         public LoggingInterceptorBuilder LogParameter(
             string methodName,
             string name,
-            Func<object?, IEnumerable<KeyValuePair<string, object?>>?> extract)
+            Func<object?, object?> extract)
         {
             if (methodName is null)
             {
@@ -365,7 +365,7 @@ namespace DotNetX.Logging
         public LoggingInterceptorBuilder LogParameter(
             Type type,
             string name,
-            Func<object?, IEnumerable<KeyValuePair<string, object?>>?> extract)
+            Func<object?, object?> extract)
         {
             if (type is null)
             {
@@ -391,14 +391,14 @@ namespace DotNetX.Logging
 
         public LoggingInterceptorBuilder LogParameter<T>(
             string name,
-            Func<T, IEnumerable<KeyValuePair<string, object?>>?> extract) =>
+            Func<T, object?> extract) =>
             LogParameter(
                 typeof(T), name,
                 obj => obj is T t ? extract(t) : null);
 
         public LoggingInterceptorBuilder LogParameter(
             Type type,
-            Func<object?, IEnumerable<KeyValuePair<string, object?>>?> extract)
+            Func<object?, object?> extract)
         {
             if (type is null)
             {
@@ -416,8 +416,28 @@ namespace DotNetX.Logging
                 extract);
         }
 
+        public LoggingInterceptorBuilder LogParameter(
+            string name,
+            Func<object?, object?> extract)
+        {
+            if (name is null)
+            {
+                throw new ArgumentNullException(nameof(name));
+            }
+
+            if (extract is null)
+            {
+                throw new ArgumentNullException(nameof(extract));
+            }
+
+            return LogParameter(
+                (method, parameterType, parameterName) =>
+                    parameterName == name,
+                extract);
+        }
+
         public LoggingInterceptorBuilder LogParameter<T>(
-            Func<T, IEnumerable<KeyValuePair<string, object?>>?> extract) =>
+            Func<T, object?> extract) =>
             LogParameter(
                 typeof(T),
                 obj => obj is T t ? extract(t) : null);
@@ -458,6 +478,13 @@ namespace DotNetX.Logging
             string? outputName = null) =>
             LogParameter(typeof(T), name, outputName);
 
+        public LoggingInterceptorBuilder LogParameter(
+            string name,
+            string? outputName = null) =>
+            LogParameter(
+                name,
+                obj => new[] { KeyValuePair.Create(outputName ?? name, obj) });
+
         #endregion [ WithParameters ]
 
         #region [ WithResult ]
@@ -466,7 +493,7 @@ namespace DotNetX.Logging
 
         record ResultExtractor(
             Func<MethodInfo, Type, bool> Predicate,
-            Func<object?, IEnumerable<KeyValuePair<string, object?>>?> Extract);
+            Func<object?, object?> Extract);
 
         private List<ResultExtractor> resultExtractors = new List<ResultExtractor>();
 
@@ -484,7 +511,7 @@ namespace DotNetX.Logging
 
         public LoggingInterceptorBuilder LogResult(
             Func<MethodInfo, Type, bool> predicate,
-            Func<object?, IEnumerable<KeyValuePair<string, object?>>?> extract)
+            Func<object?, object?> extract)
         {
             if (predicate is null)
             {
@@ -504,7 +531,7 @@ namespace DotNetX.Logging
         public LoggingInterceptorBuilder LogResult(
             string methodName,
             Type type,
-            Func<object?, IEnumerable<KeyValuePair<string, object?>>?> extract)
+            Func<object?, object?> extract)
         {
             if (methodName is null)
             {
@@ -528,7 +555,7 @@ namespace DotNetX.Logging
 
         public LoggingInterceptorBuilder LogResult<T>(
             string methodName,
-            Func<object?, IEnumerable<KeyValuePair<string, object?>>?> extract) =>
+            Func<object?, object?> extract) =>
             LogResult(
                 methodName,
                 typeof(T),
@@ -536,7 +563,7 @@ namespace DotNetX.Logging
 
         public LoggingInterceptorBuilder LogResult(
             string methodName,
-            Func<object?, IEnumerable<KeyValuePair<string, object?>>?> extract)
+            Func<object?, object?> extract)
         {
             if (methodName is null)
             {
@@ -555,7 +582,7 @@ namespace DotNetX.Logging
 
         public LoggingInterceptorBuilder LogResult(
             Type type,
-            Func<object?, IEnumerable<KeyValuePair<string, object?>>?> extract)
+            Func<object?, object?> extract)
         {
             if (type is null)
             {
@@ -573,7 +600,7 @@ namespace DotNetX.Logging
         }
 
         public LoggingInterceptorBuilder LogResult<T>(
-            Func<object?, IEnumerable<KeyValuePair<string, object?>>?> extract) =>
+            Func<object?, object?> extract) =>
             LogResult(
                 typeof(T),
                 obj => obj is T t ? extract(t) : null);
@@ -1140,14 +1167,20 @@ namespace DotNetX.Logging
 
                                 foreach (var extractor in extractors)
                                 {
-                                    var data = extractor(result);
-
-                                    if (data != null)
+                                    try
                                     {
-                                        foreach (var pair in data)
+                                        var data = ExtractPairs(extractor(result));
+
+                                        if (data != null)
                                         {
-                                            dict[pair.Key] = pair.Value;
+                                            foreach (var pair in data)
+                                            {
+                                                dict[pair.Key] = pair.Value;
+                                            }
                                         }
+                                    }
+                                    catch
+                                    {
                                     }
                                 }
 
@@ -1219,14 +1252,20 @@ namespace DotNetX.Logging
 
                                     foreach (var extractor in paramExtractors.Value)
                                     {
-                                        var data = extractor(value);
-
-                                        if (data != null)
+                                        try
                                         {
-                                            foreach (var pair in data)
+                                            var data = ExtractPairs(extractor(value));
+
+                                            if (data != null)
                                             {
-                                                dict[pair.Key] = pair.Value;
+                                                foreach (var pair in data)
+                                                {
+                                                    dict[pair.Key] = pair.Value;
+                                                }
                                             }
+                                        }
+                                        catch
+                                        {
                                         }
                                     }
                                 }
@@ -1249,6 +1288,51 @@ namespace DotNetX.Logging
                 }
 
                 return (_, _) => null;
+            }
+
+            private static readonly ConcurrentDictionary<Type, PropertyInfo[]> metadataPropertoesCache =
+                new ConcurrentDictionary<Type, PropertyInfo[]>();
+
+            private static IEnumerable<KeyValuePair<string, object?>>? ExtractPairs(object? metadata)
+            {
+                if (metadata == null)
+                {
+                    return null;
+                }
+
+                if (metadata is IEnumerable<KeyValuePair<string, object?>> keyValuePairs)
+                {
+                    return keyValuePairs;
+                }
+
+                if (metadata is IEnumerable<(string key, object? value)> tuples)
+                {
+                    return tuples.Select(t => KeyValuePair.Create(t.key, t.value));
+                }
+
+                var type = metadata.GetType();
+
+                var properties = metadataPropertoesCache.GetOrAdd(
+                    type,
+                    t => t
+                        .GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                        .Where(p => p.CanRead)
+                        .ToArray());
+
+                return properties
+                    .SelectMany(p =>
+                    {
+                        try
+                        {
+                            var value = p.GetValue(metadata);
+
+                            return KeyValuePair.Create(p.Name, value).Singleton();
+                        }
+                        catch
+                        {
+                            return Enumerable.Empty<KeyValuePair<string, object?>>();
+                        }
+                    });
             }
 
             #endregion [ Internal ]
