@@ -677,7 +677,161 @@ namespace DotNetX.Reflection
             return false;
         }
 
+        public static bool TryGetGenericParameters(
+            this Type type,
+            Type genericTypeDefinition,
+            [MaybeNullWhen(false)]
+            out Type first,
+            [MaybeNullWhen(false)]
+            out Type second,
+            [MaybeNullWhen(false)]
+            out Type third,
+            [MaybeNullWhen(false)]
+            out Type fourth)
+        {
+            if (type.TryGetAllGenericParameters(genericTypeDefinition, out var types) &&
+                types.Length == 4)
+            {
+                first = types[0];
+                second = types[1];
+                third = types[2];
+                fourth = types[3];
+                return true;
+            }
+
+            first = null;
+            second = null;
+            third = null;
+            fourth = null;
+            return false;
+        }
+
         #endregion [ TryGetGenericParameters ]
+
+
+        #region [ TryGetHierarchyGenericParameters ]
+
+        public static bool TryGetAllHierarchyGenericParameters(
+            this Type type,
+            Type genericTypeDefinition,
+            [MaybeNullWhen(false)]
+            out Type[] parameters)
+        {
+            if (type is null)
+            {
+                throw new ArgumentNullException(nameof(type));
+            }
+
+            if (genericTypeDefinition is null)
+            {
+                throw new ArgumentNullException(nameof(genericTypeDefinition));
+            }
+
+            foreach (var ancestor in type.GetTypeHierarchy())
+            {
+                if (ancestor.TryGetAllGenericParameters(genericTypeDefinition, out parameters))
+                {
+                    return true;
+                }
+            }
+
+            parameters = null;
+            return false;
+        }
+
+        public static bool TryGetHierarchyGenericParameters(
+            this Type type,
+            Type genericTypeDefinition,
+            [MaybeNullWhen(false)]
+            out Type first)
+        {
+            if (type.TryGetAllHierarchyGenericParameters(genericTypeDefinition, out var types) &&
+                types.Length == 1)
+            {
+                first = types[0];
+                return true;
+            }
+
+            first = null;
+            return false;
+        }
+
+        public static bool TryGetHierarchyGenericParameters(
+            this Type type,
+            Type genericTypeDefinition,
+            [MaybeNullWhen(false)]
+            out Type first,
+            [MaybeNullWhen(false)]
+            out Type second)
+        {
+            if (type.TryGetAllHierarchyGenericParameters(genericTypeDefinition, out var types) &&
+                types.Length == 2)
+            {
+                first = types[0];
+                second = types[1];
+                return true;
+            }
+
+            first = null;
+            second = null;
+            return false;
+        }
+
+        public static bool TryGetHierarchyGenericParameters(
+            this Type type,
+            Type genericTypeDefinition,
+            [MaybeNullWhen(false)]
+            out Type first,
+            [MaybeNullWhen(false)]
+            out Type second,
+            [MaybeNullWhen(false)]
+            out Type third)
+        {
+            if (type.TryGetAllHierarchyGenericParameters(genericTypeDefinition, out var types) &&
+                types.Length == 3)
+            {
+                first = types[0];
+                second = types[1];
+                third = types[2];
+                return true;
+            }
+
+            first = null;
+            second = null;
+            third = null;
+            return false;
+        }
+
+        public static bool TryGetHierarchyGenericParameters(
+            this Type type,
+            Type genericTypeDefinition,
+            [MaybeNullWhen(false)]
+            out Type first,
+            [MaybeNullWhen(false)]
+            out Type second,
+            [MaybeNullWhen(false)]
+            out Type third,
+            [MaybeNullWhen(false)]
+            out Type fourth)
+        {
+            if (type.TryGetAllHierarchyGenericParameters(genericTypeDefinition, out var types) &&
+                types.Length == 4)
+            {
+                first = types[0];
+                second = types[1];
+                third = types[2];
+                fourth = types[3];
+                return true;
+            }
+
+            first = null;
+            second = null;
+            third = null;
+            fourth = null;
+            return false;
+        }
+
+        #endregion [ TryGetHierarchyGenericParameters ]
 
 
         #region [ TryGetDeclaringProperty ]

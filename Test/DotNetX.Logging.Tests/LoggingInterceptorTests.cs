@@ -2165,10 +2165,10 @@ namespace DotNetX.Logging.Tests
 
             var options = new LoggingInterceptorOptions();
 
-            var extract = new Mock<Func<object?, object?>>();
+            var extract = new Mock<Func<int, object?>>();
             extract
-                .Setup(e => e.Invoke(It.IsAny<object>()))
-                .Returns((object? result) => new[] { ("Value", result) });
+                .Setup(e => e.Invoke(It.IsAny<int>()))
+                .Returns((int result) => new[] { ("Value", result) });
 
             var builder = new LoggingInterceptorBuilder()
                 .WithLogger(logger.Object)
@@ -2306,10 +2306,10 @@ namespace DotNetX.Logging.Tests
 
             var options = new LoggingInterceptorOptions();
 
-            var extract = new Mock<Func<object?, object?>>();
+            var extract = new Mock<Func<int, object?>>();
             extract
-                .Setup(e => e.Invoke(It.IsAny<object>()))
-                .Returns((object? result) => new[] { KeyValuePair.Create("Value", result) });
+                .Setup(e => e.Invoke(It.IsAny<int>()))
+                .Returns((int result) => new[] { KeyValuePair.Create("Value", result) });
 
             var builder = new LoggingInterceptorBuilder()
                 .WithLogger(logger.Object)

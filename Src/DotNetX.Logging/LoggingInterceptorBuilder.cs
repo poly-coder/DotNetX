@@ -555,7 +555,7 @@ namespace DotNetX.Logging
 
         public LoggingInterceptorBuilder LogResult<T>(
             string methodName,
-            Func<object?, object?> extract) =>
+            Func<T, object?> extract) =>
             LogResult(
                 methodName,
                 typeof(T),
@@ -600,7 +600,7 @@ namespace DotNetX.Logging
         }
 
         public LoggingInterceptorBuilder LogResult<T>(
-            Func<object?, object?> extract) =>
+            Func<T, object?> extract) =>
             LogResult(
                 typeof(T),
                 obj => obj is T t ? extract(t) : null);
@@ -1293,6 +1293,27 @@ namespace DotNetX.Logging
             private static readonly ConcurrentDictionary<Type, PropertyInfo[]> metadataPropertoesCache =
                 new ConcurrentDictionary<Type, PropertyInfo[]>();
 
+            private static readonly HashSet<Type> SystemTypes = new HashSet<Type>
+            {
+                typeof(string),
+                typeof(char),
+                typeof(bool),
+                typeof(Int64),
+                typeof(Int32),
+                typeof(Int16),
+                typeof(SByte),
+                typeof(UInt64),
+                typeof(UInt32),
+                typeof(UInt16),
+                typeof(Byte),
+                typeof(Double),
+                typeof(Single),
+                typeof(Decimal),
+                typeof(DateTime),
+                typeof(DateTimeOffset),
+                typeof(TimeSpan),
+            };
+
             private static IEnumerable<KeyValuePair<string, object?>>? ExtractPairs(object? metadata)
             {
                 if (metadata == null)
@@ -1300,14 +1321,110 @@ namespace DotNetX.Logging
                     return null;
                 }
 
-                if (metadata is IEnumerable<KeyValuePair<string, object?>> keyValuePairs)
+                if (SystemTypes.Contains(metadata.GetType()))
                 {
-                    return keyValuePairs;
+                    return new[] { KeyValuePair.Create("Value", (object?)metadata) };
                 }
 
-                if (metadata is IEnumerable<(string key, object? value)> tuples)
+                if (metadata is IEnumerable enumerable)
                 {
-                    return tuples.Select(t => KeyValuePair.Create(t.key, t.value));
+                    if (metadata is IEnumerable<KeyValuePair<string, object?>> keyValuePairs)
+                    {
+                        return keyValuePairs;
+                    }
+
+                    if (metadata is IEnumerable<Tuple<string, object?>> tuples)
+                    {
+                        return tuples
+                            .Select(t => KeyValuePair.Create(t.Item1, t.Item2));
+                    }
+
+                    if (metadata is IEnumerable<(string key, object? value)> valueTuples)
+                    {
+                        return valueTuples
+                            .Select(t => KeyValuePair.Create(t.key, t.value));
+                    }
+
+                    if (metadata.GetType().TryGetHierarchyGenericParameters(typeof(IEnumerable<>), out var tupleType))
+                    {
+                        if (tupleType.TryGetGenericParameters(typeof(KeyValuePair<,>), out var kvpString,
+                                out var _) &&
+                            kvpString == typeof(string))
+                        {
+                            return enumerable
+                                .Cast<object>()
+                                .Select(obj =>
+                                {
+                                    var key = tupleType.InvokeMember(
+                                        "Key",
+                                        BindingFlags.Instance | BindingFlags.Public | BindingFlags.GetProperty,
+                                        binder: null,
+                                        target: obj,
+                                        args: null) as string;
+
+                                    var value = tupleType.InvokeMember(
+                                        "Value",
+                                        BindingFlags.Instance | BindingFlags.Public | BindingFlags.GetProperty,
+                                        binder: null,
+                                        target: obj,
+                                        args: null);
+
+                                    return KeyValuePair.Create(key!, value);
+                                });
+                        }
+
+                        if (tupleType.TryGetGenericParameters(typeof(Tuple<,>), out var tupleString,
+                                out var _) &&
+                            tupleString == typeof(string))
+                        {
+                            return enumerable
+                                .Cast<object>()
+                                .Select(obj =>
+                                {
+                                    var key = tupleType.InvokeMember(
+                                        "Item1",
+                                        BindingFlags.Instance | BindingFlags.Public | BindingFlags.GetProperty,
+                                        binder: null,
+                                        target: obj,
+                                        args: null) as string;
+
+                                    var value = tupleType.InvokeMember(
+                                        "Item2",
+                                        BindingFlags.Instance | BindingFlags.Public | BindingFlags.GetProperty,
+                                        binder: null,
+                                        target: obj,
+                                        args: null);
+
+                                    return KeyValuePair.Create(key!, value);
+                                });
+                        }
+
+                        if (tupleType.TryGetGenericParameters(typeof(ValueTuple<,>), out var valueTupleString,
+                                out var _) &&
+                            valueTupleString == typeof(string))
+                        {
+                            return enumerable
+                                .Cast<object>()
+                                .Select(obj =>
+                                {
+                                    var key = tupleType.InvokeMember(
+                                        "Item1",
+                                        BindingFlags.Instance | BindingFlags.Public | BindingFlags.GetField,
+                                        binder: null,
+                                        target: obj,
+                                        args: null) as string;
+
+                                    var value = tupleType.InvokeMember(
+                                        "Item2",
+                                        BindingFlags.Instance | BindingFlags.Public | BindingFlags.GetField,
+                                        binder: null,
+                                        target: obj,
+                                        args: null);
+
+                                    return KeyValuePair.Create(key!, value);
+                                });
+                        }
+                    }
                 }
 
                 var type = metadata.GetType();
