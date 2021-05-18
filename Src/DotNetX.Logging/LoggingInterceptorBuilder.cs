@@ -25,7 +25,7 @@ namespace DotNetX.Logging
 
             clone.options = options.Clone();
             
-            clone.rejectedMethodsPredicates = new List<Func<MethodInfo, bool>>(rejectedMethodsPredicates);
+            clone.methodsPredicates = new List<Func<MethodInfo, bool>>(methodsPredicates);
 
             clone.parametersExtractors = new List<ParametersExtractor>(parametersExtractors);
             
@@ -204,9 +204,10 @@ namespace DotNetX.Logging
 
         #endregion [ Flags ]
 
-        #region [ DoNotInterceptIf ]
+        #region [ Filters ]
 
-        private List<Func<MethodInfo, bool>> rejectedMethodsPredicates = new List<Func<MethodInfo, bool>>();
+        private bool includeByDefault = true;
+        private List<Func<MethodInfo, bool>> methodsPredicates = new List<Func<MethodInfo, bool>>();
 
         public LoggingInterceptorBuilder DoNotInterceptIf(Func<MethodInfo, bool> predicate)
         {
@@ -216,7 +217,14 @@ namespace DotNetX.Logging
             }
 
             CheckNotBuilt();
-            rejectedMethodsPredicates.Add(predicate);
+
+            if (!includeByDefault && methodsPredicates.Any())
+            {
+                throw new InvalidOperationException("Cannot use DoNotIntercept methods after using DoIntercept");
+            }
+
+            includeByDefault = true;
+            methodsPredicates.Add(predicate);
             return this;
         }
 
@@ -250,7 +258,56 @@ namespace DotNetX.Logging
             return DoNotInterceptIf(method => Regex.IsMatch(method.Name, pattern));
         }
 
-        #endregion [ DoNotInterceptIf ]
+        public LoggingInterceptorBuilder DoInterceptIf(Func<MethodInfo, bool> predicate)
+        {
+            if (predicate is null)
+            {
+                throw new ArgumentNullException(nameof(predicate));
+            }
+
+            CheckNotBuilt();
+
+            if (includeByDefault && methodsPredicates.Any())
+            {
+                throw new InvalidOperationException("Cannot use DoIntercept methods after using DoNotIntercept");
+            }
+
+            includeByDefault = false;
+            methodsPredicates.Add(predicate);
+            return this;
+        }
+
+        public LoggingInterceptorBuilder DoInterceptIfNamed(string methodName)
+        {
+            if (methodName is null)
+            {
+                throw new ArgumentNullException(nameof(methodName));
+            }
+
+            return DoInterceptIf(method => method.Name == methodName);
+        }
+
+        public LoggingInterceptorBuilder DoInterceptIfMatches(Regex pattern)
+        {
+            if (pattern is null)
+            {
+                throw new ArgumentNullException(nameof(pattern));
+            }
+
+            return DoInterceptIf(method => pattern.IsMatch(method.Name));
+        }
+
+        public LoggingInterceptorBuilder DoInterceptIfMatches(string pattern)
+        {
+            if (pattern is null)
+            {
+                throw new ArgumentNullException(nameof(pattern));
+            }
+
+            return DoInterceptIf(method => Regex.IsMatch(method.Name, pattern));
+        }
+
+        #endregion [ Filters ]
 
         #region [ WithParameters ]
 
@@ -702,10 +759,10 @@ namespace DotNetX.Logging
             private readonly bool interceptEnumerables;
             private readonly bool interceptAsync;
             private readonly bool interceptProperties;
-            
+            private readonly bool includeByDefault;
             private readonly LoggingInterceptorOptions options;
 
-            private readonly IReadOnlyCollection<Func<MethodInfo, bool>> rejectedMethodsPredicates;
+            private readonly IReadOnlyCollection<Func<MethodInfo, bool>> methodsPredicates;
 
             private readonly Func<MethodInfo, ILogger> loggerFactory;
 
@@ -719,7 +776,8 @@ namespace DotNetX.Logging
                 interceptAsync = builder.interceptAsync;
                 interceptProperties = builder.interceptProperties;
 
-                rejectedMethodsPredicates = builder.rejectedMethodsPredicates.AsReadOnly();
+                includeByDefault = builder.includeByDefault;
+                methodsPredicates = builder.methodsPredicates.AsReadOnly();
 
                 options = builder.options;
 
@@ -753,12 +811,9 @@ namespace DotNetX.Logging
                     return false;
                 }
 
-                if (rejectedMethodsPredicates.Any(predicate => predicate(targetMethod)))
-                {
-                    return false;
-                }
+                var passFilter = methodsPredicates.Any(predicate => predicate(targetMethod));
 
-                return true;
+                return includeByDefault ? !passFilter : passFilter;
             }
 
             #endregion [ ShouldIntercept ]

@@ -27,9 +27,10 @@ namespace DotNetX.Reflection
                 throw new ArgumentNullException(nameof(interceptors));
             }
 
+            Func<object, MethodInfo, object?[]?, Task<TState>> before = interceptors.Before;
             return this
                 .ShouldIntercept(interceptors.ShouldIntercept)
-                .Before(interceptors.Before)
+                .Before(before)
                 .After(interceptors.After)
                 .Error(interceptors.Error);
         }
@@ -41,9 +42,10 @@ namespace DotNetX.Reflection
                 throw new ArgumentNullException(nameof(interceptors));
             }
 
+            Func<object, MethodInfo, object?[]?, TState> before = interceptors.Before;
             return this
                 .ShouldIntercept(interceptors.ShouldIntercept)
-                .Before(interceptors.Before)
+                .Before(before)
                 .After(interceptors.After)
                 .Error(interceptors.Error);
         }

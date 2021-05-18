@@ -1665,7 +1665,7 @@ namespace DotNetX.Logging.Tests
 
         #endregion [ Builder.WithLogger... ]
 
-        #region [ DoNotInterceptIf... ]
+        #region [ Filters... ]
 
         [Fact]
         public void DoNotInterceptIfShouldPreventAGivenMethodFromBeingIntercepted()
@@ -1983,7 +1983,323 @@ namespace DotNetX.Logging.Tests
                 Times.Once);
         }
 
-        #endregion [ DoNotInterceptIf... ]
+        [Fact]
+        public void DoInterceptIfShouldMakeAGivenMethodBeingIntercepted()
+        {
+            // Given
+            var logger = new Mock<ILogger>(MockBehavior.Loose);
+            logger
+                .Setup(e => e.IsEnabled(
+                    It.IsAny<LogLevel>()))
+                .Returns(true);
+
+            var options = new LoggingInterceptorOptions();
+
+            var builder = new LoggingInterceptorBuilder()
+                .WithLogger(logger.Object)
+                .WithOptions(options)
+                .DoInterceptIf((method) => method.Name != nameof(IDummyTarget.VoidMethod));
+
+            var interceptor = builder.Build();
+
+            var target = new Mock<IDummyTarget>(MockBehavior.Loose);
+            target.Setup(e => e.SyncMethod(It.IsAny<string>())).Returns(42);
+
+            var intercepted = interceptor.Intercept(target.Object);
+
+            // When
+            intercepted.VoidMethod("value1");
+            var result = intercepted.SyncMethod("value2");
+
+            // Then
+            result.Should().Be(42);
+
+            target.Verify(
+                t => t.VoidMethod("value1"),
+                Times.Once);
+
+            target.Verify(
+                t => t.SyncMethod("value2"),
+                Times.Once);
+
+            logger.Verify(
+                t => t.IsEnabled(It.IsAny<LogLevel>()),
+                Times.Exactly(2));
+
+            logger.Verify(
+                t => t.IsEnabled(options.StartLogLevel),
+                Times.Once);
+
+            logger.Verify(
+                t => t.IsEnabled(options.DoneLogLevel),
+                Times.Once);
+
+            logger.Verify(
+                t => t.Log<It.IsAnyType>(
+                    It.IsAny<LogLevel>(),
+                    It.IsAny<EventId>(),
+                    It.IsAny<It.IsAnyType>(),
+                    It.IsAny<Exception>(),
+                    It.IsAny<Func<It.IsAnyType, Exception, string>>()),
+                Times.Exactly(2));
+
+            logger.Verify(
+                t => t.Log<It.IsAnyType>(
+                    options.StartLogLevel,
+                    It.IsAny<EventId>(),
+                    It.Is<It.IsAnyType>((message, _) => message.ToString() == "IDummyTarget.SyncMethod() | START"),
+                    default(Exception),
+                    It.IsAny<Func<It.IsAnyType, Exception, string>>()),
+                Times.Once);
+
+            logger.Verify(
+                t => t.Log<It.IsAnyType>(
+                    options.DoneLogLevel,
+                    It.IsAny<EventId>(),
+                    It.Is<It.IsAnyType>((message, _) => message.ToString().StartsWith("IDummyTarget.SyncMethod() | DONE. Elapsed:")),
+                    default(Exception),
+                    It.IsAny<Func<It.IsAnyType, Exception, string>>()),
+                Times.Once);
+        }
+
+        [Fact]
+        public void DoInterceptIfNamedShouldMakeAGivenMethodBeingIntercepted()
+        {
+            // Given
+            var logger = new Mock<ILogger>(MockBehavior.Loose);
+            logger
+                .Setup(e => e.IsEnabled(
+                    It.IsAny<LogLevel>()))
+                .Returns(true);
+
+            var options = new LoggingInterceptorOptions();
+
+            var builder = new LoggingInterceptorBuilder()
+                .WithLogger(logger.Object)
+                .WithOptions(options)
+                .DoInterceptIfNamed(nameof(IDummyTarget.SyncMethod));
+
+            var interceptor = builder.Build();
+
+            var target = new Mock<IDummyTarget>(MockBehavior.Loose);
+            target.Setup(e => e.SyncMethod(It.IsAny<string>())).Returns(42);
+
+            var intercepted = interceptor.Intercept(target.Object);
+
+            // When
+            intercepted.VoidMethod("value1");
+            var result = intercepted.SyncMethod("value2");
+
+            // Then
+            result.Should().Be(42);
+
+            target.Verify(
+                t => t.VoidMethod("value1"),
+                Times.Once);
+
+            target.Verify(
+                t => t.SyncMethod("value2"),
+                Times.Once);
+
+            logger.Verify(
+                t => t.IsEnabled(It.IsAny<LogLevel>()),
+                Times.Exactly(2));
+
+            logger.Verify(
+                t => t.IsEnabled(options.StartLogLevel),
+                Times.Once);
+
+            logger.Verify(
+                t => t.IsEnabled(options.DoneLogLevel),
+                Times.Once);
+
+            logger.Verify(
+                t => t.Log<It.IsAnyType>(
+                    It.IsAny<LogLevel>(),
+                    It.IsAny<EventId>(),
+                    It.IsAny<It.IsAnyType>(),
+                    It.IsAny<Exception>(),
+                    It.IsAny<Func<It.IsAnyType, Exception, string>>()),
+                Times.Exactly(2));
+
+            logger.Verify(
+                t => t.Log<It.IsAnyType>(
+                    options.StartLogLevel,
+                    It.IsAny<EventId>(),
+                    It.Is<It.IsAnyType>((message, _) => message.ToString() == "IDummyTarget.SyncMethod() | START"),
+                    default(Exception),
+                    It.IsAny<Func<It.IsAnyType, Exception, string>>()),
+                Times.Once);
+
+            logger.Verify(
+                t => t.Log<It.IsAnyType>(
+                    options.DoneLogLevel,
+                    It.IsAny<EventId>(),
+                    It.Is<It.IsAnyType>((message, _) => message.ToString().StartsWith("IDummyTarget.SyncMethod() | DONE. Elapsed:")),
+                    default(Exception),
+                    It.IsAny<Func<It.IsAnyType, Exception, string>>()),
+                Times.Once);
+        }
+
+        [Fact]
+        public void DoInterceptIfRegexShouldMakeAGivenMethodBeingIntercepted()
+        {
+            // Given
+            var logger = new Mock<ILogger>(MockBehavior.Loose);
+            logger
+                .Setup(e => e.IsEnabled(
+                    It.IsAny<LogLevel>()))
+                .Returns(true);
+
+            var options = new LoggingInterceptorOptions();
+
+            var builder = new LoggingInterceptorBuilder()
+                .WithLogger(logger.Object)
+                .WithOptions(options)
+                .DoInterceptIfMatches(new Regex("^Sync"));
+
+            var interceptor = builder.Build();
+
+            var target = new Mock<IDummyTarget>(MockBehavior.Loose);
+            target.Setup(e => e.SyncMethod(It.IsAny<string>())).Returns(42);
+
+            var intercepted = interceptor.Intercept(target.Object);
+
+            // When
+            intercepted.VoidMethod("value1");
+            var result = intercepted.SyncMethod("value2");
+
+            // Then
+            result.Should().Be(42);
+
+            target.Verify(
+                t => t.VoidMethod("value1"),
+                Times.Once);
+
+            target.Verify(
+                t => t.SyncMethod("value2"),
+                Times.Once);
+
+            logger.Verify(
+                t => t.IsEnabled(It.IsAny<LogLevel>()),
+                Times.Exactly(2));
+
+            logger.Verify(
+                t => t.IsEnabled(options.StartLogLevel),
+                Times.Once);
+
+            logger.Verify(
+                t => t.IsEnabled(options.DoneLogLevel),
+                Times.Once);
+
+            logger.Verify(
+                t => t.Log<It.IsAnyType>(
+                    It.IsAny<LogLevel>(),
+                    It.IsAny<EventId>(),
+                    It.IsAny<It.IsAnyType>(),
+                    It.IsAny<Exception>(),
+                    It.IsAny<Func<It.IsAnyType, Exception, string>>()),
+                Times.Exactly(2));
+
+            logger.Verify(
+                t => t.Log<It.IsAnyType>(
+                    options.StartLogLevel,
+                    It.IsAny<EventId>(),
+                    It.Is<It.IsAnyType>((message, _) => message.ToString() == "IDummyTarget.SyncMethod() | START"),
+                    default(Exception),
+                    It.IsAny<Func<It.IsAnyType, Exception, string>>()),
+                Times.Once);
+
+            logger.Verify(
+                t => t.Log<It.IsAnyType>(
+                    options.DoneLogLevel,
+                    It.IsAny<EventId>(),
+                    It.Is<It.IsAnyType>((message, _) => message.ToString().StartsWith("IDummyTarget.SyncMethod() | DONE. Elapsed:")),
+                    default(Exception),
+                    It.IsAny<Func<It.IsAnyType, Exception, string>>()),
+                Times.Once);
+        }
+
+        [Fact]
+        public void DoInterceptIfPatternShouldMakeAGivenMethodBeingIntercepted()
+        {
+            // Given
+            var logger = new Mock<ILogger>(MockBehavior.Loose);
+            logger
+                .Setup(e => e.IsEnabled(
+                    It.IsAny<LogLevel>()))
+                .Returns(true);
+
+            var options = new LoggingInterceptorOptions();
+
+            var builder = new LoggingInterceptorBuilder()
+                .WithLogger(logger.Object)
+                .WithOptions(options)
+                .DoInterceptIfMatches("^Sync");
+
+            var interceptor = builder.Build();
+
+            var target = new Mock<IDummyTarget>(MockBehavior.Loose);
+            target.Setup(e => e.SyncMethod(It.IsAny<string>())).Returns(42);
+
+            var intercepted = interceptor.Intercept(target.Object);
+
+            // When
+            intercepted.VoidMethod("value1");
+            var result = intercepted.SyncMethod("value2");
+
+            // Then
+            result.Should().Be(42);
+
+            target.Verify(
+                t => t.VoidMethod("value1"),
+                Times.Once);
+
+            target.Verify(
+                t => t.SyncMethod("value2"),
+                Times.Once);
+
+            logger.Verify(
+                t => t.IsEnabled(It.IsAny<LogLevel>()),
+                Times.Exactly(2));
+
+            logger.Verify(
+                t => t.IsEnabled(options.StartLogLevel),
+                Times.Once);
+
+            logger.Verify(
+                t => t.IsEnabled(options.DoneLogLevel),
+                Times.Once);
+
+            logger.Verify(
+                t => t.Log<It.IsAnyType>(
+                    It.IsAny<LogLevel>(),
+                    It.IsAny<EventId>(),
+                    It.IsAny<It.IsAnyType>(),
+                    It.IsAny<Exception>(),
+                    It.IsAny<Func<It.IsAnyType, Exception, string>>()),
+                Times.Exactly(2));
+
+            logger.Verify(
+                t => t.Log<It.IsAnyType>(
+                    options.StartLogLevel,
+                    It.IsAny<EventId>(),
+                    It.Is<It.IsAnyType>((message, _) => message.ToString() == "IDummyTarget.SyncMethod() | START"),
+                    default(Exception),
+                    It.IsAny<Func<It.IsAnyType, Exception, string>>()),
+                Times.Once);
+
+            logger.Verify(
+                t => t.Log<It.IsAnyType>(
+                    options.DoneLogLevel,
+                    It.IsAny<EventId>(),
+                    It.Is<It.IsAnyType>((message, _) => message.ToString().StartsWith("IDummyTarget.SyncMethod() | DONE. Elapsed:")),
+                    default(Exception),
+                    It.IsAny<Func<It.IsAnyType, Exception, string>>()),
+                Times.Once);
+        }
+
+        #endregion [ Filters... ]
 
         #region [ WithResult / LogResult ]
 
