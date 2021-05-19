@@ -35,6 +35,34 @@ namespace DotNetX.OpenTelemetry
 
         #endregion [ ActivitySource ]
 
+        #region [ ActivityKind ]
+
+        private ActivityKind activityKind = ActivityKind.Internal;
+
+        public OpenTelemetryInterceptorBuilder WithActivityKind(ActivityKind activityKind)
+        {
+            CheckNotBuilt();
+            this.activityKind = activityKind;
+            return this;
+        }
+
+        #endregion [ ActivityKind ]
+
+        #region [ TypeName ]
+
+        private string? typeName;
+
+        public OpenTelemetryInterceptorBuilder WithTypeName(string typeName)
+        {
+            if (typeName == null) throw new ArgumentNullException(nameof(typeName));
+
+            CheckNotBuilt();
+            this.typeName = typeName;
+            return this;
+        }
+
+        #endregion [ ActivityKind ]
+
         #region [ Options ]
 
         private OpenTelemetryInterceptorOptions options = new OpenTelemetryInterceptorOptions();
@@ -872,6 +900,9 @@ namespace DotNetX.OpenTelemetry
             private readonly bool interceptProperties;
             private readonly OpenTelemetryInterceptorOptions options;
 
+            private readonly ActivityKind activityKind;
+            private readonly string? typeName;
+
             private readonly bool includeByDefault;
             private readonly ReadOnlyCollection<Func<MethodInfo, bool>> methodsPredicates;
 
@@ -887,13 +918,16 @@ namespace DotNetX.OpenTelemetry
                 interceptAsync = builder.interceptAsync;
                 interceptProperties = builder.interceptProperties;
 
+                activityKind = builder.activityKind;
+                typeName = builder.typeName;
+
                 includeByDefault = builder.includeByDefault;
                 methodsPredicates = builder.methodsPredicates.AsReadOnly();
                 commonTags = builder.commonTags.AsReadOnly();
 
                 options = builder.options;
 
-                activitySource = builder.activitySource;
+                activitySource = builder.activitySource ?? throw new InvalidOperationException("IActivitySource is required. Use builder.WithActivitySource(...)");
                 getBeforeTags = CreateBeforeTags(builder);
                 getResultTags = CreateGetResultTags(builder);
                 getErrorTags = CreateGetErrorTags(builder);
@@ -951,15 +985,23 @@ namespace DotNetX.OpenTelemetry
             {
                 if (state.Activity != null)
                 {
-                    var resultTags = state.GetResultTags(result);
-
-                    if (resultTags != null)
+                    try
                     {
-                        foreach (var pair in resultTags)
+                        var resultTags = state.GetResultTags(result);
+
+                        if (resultTags != null)
                         {
-                            state.Activity.SetTag(pair.Key, pair.Value);
+                            foreach (var pair in resultTags)
+                            {
+                                state.Activity.SetTag(pair.Key, pair.Value);
+                            }
                         }
                     }
+                    catch
+                    {
+                    }
+
+                    state.Activity.Stop();
                 }
             }
 
@@ -968,15 +1010,23 @@ namespace DotNetX.OpenTelemetry
             {
                 if (state.Activity != null)
                 {
-                    var errorTags = state.GetErrorTags(exception);
-
-                    if (errorTags != null)
+                    try
                     {
-                        foreach (var pair in errorTags)
+                        var errorTags = state.GetErrorTags(exception);
+
+                        if (errorTags != null)
                         {
-                            state.Activity.SetTag(pair.Key, pair.Value);
+                            foreach (var pair in errorTags)
+                            {
+                                state.Activity.SetTag(pair.Key, pair.Value);
+                            }
                         }
                     }
+                    catch
+                    {
+                    }
+
+                    state.Activity.Stop();
                 }
             }
 
@@ -986,12 +1036,10 @@ namespace DotNetX.OpenTelemetry
 
             private OpenTelemetryInterceptorState PrepareState(object target, MethodInfo targetMethod, object?[]? args)
             {
-                string typeName = targetMethod.DeclaringType?.Name ?? options.UnknownTypeName;
+                string typeName = this.typeName ?? targetMethod.DeclaringType?.Name ?? options.UnknownTypeName;
                 string methodName = targetMethod.Name;
 
                 var activityName = options.ActivityNameFormat(typeName, methodName);
-
-                var activityKind = ActivityKind.Internal;
 
                 var tags = getBeforeTags(target, targetMethod, args);
 
@@ -1226,10 +1274,33 @@ namespace DotNetX.OpenTelemetry
                         ConcurrentDictionary<MethodInfo, Func<object?, IEnumerable<KeyValuePair<string, object?>>>> extractorsCache =
                             new ConcurrentDictionary<MethodInfo, Func<object?, IEnumerable<KeyValuePair<string, object?>>>>();
 
+                        Type GetMethodResultType(MethodInfo method)
+                        {
+                            var returnType = method.ReturnType;
+
+                            if (interceptAsync)
+                            {
+                                if (returnType == typeof(Task) || returnType == typeof(ValueTask))
+                                {
+                                    return typeof(void);
+                                }
+
+                                if (returnType.TryGetGenericParameters(typeof(Task<>), out var resultType) ||
+                                    returnType.TryGetGenericParameters(typeof(ValueTask<>), out resultType))
+                                {
+                                    return resultType;
+                                }
+                            }
+
+                            return returnType;
+                        }
+
                         Func<object?, IEnumerable<KeyValuePair<string, object?>>> GetExtractors(MethodInfo methodInfo)
                         {
+                            var methodResult = GetMethodResultType(methodInfo);
+
                             var extractors = resultExtractors
-                                .Where(e => e.Predicate(methodInfo, methodInfo.ReturnType))
+                                .Where(e => e.Predicate(methodInfo, methodResult))
                                 .Select(e => e.Extract)
                                 .ToArray();
 

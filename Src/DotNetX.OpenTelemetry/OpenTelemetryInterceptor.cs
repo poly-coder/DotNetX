@@ -28,23 +28,28 @@ namespace DotNetX.OpenTelemetry
                 .Add(InterceptSyncMethod<OpenTelemetryInterceptorState>.Default.With(this));
 
             return options.CreateInterceptor(target);
-
         }
+
+        public bool ShouldIntercept(object target, MethodInfo targetMethod, object?[]? args)
+        {
+            return setup.ShouldIntercept(target, targetMethod, args);
+        }
+
         public OpenTelemetryInterceptorState Before(object target, MethodInfo targetMethod, object?[]? args)
         {
-            throw new NotImplementedException();
+            return setup.Before(target, targetMethod, args);
         }
 
         public void After(OpenTelemetryInterceptorState state, object target, MethodInfo targetMethod, object?[]? args,
             object? result)
         {
-            throw new NotImplementedException();
+            setup.After(state, target, targetMethod, args, result);
         }
 
         public void Error(OpenTelemetryInterceptorState state, object target, MethodInfo targetMethod, object?[]? args,
             Exception exception)
         {
-            throw new NotImplementedException();
+            setup.Error(state, target, targetMethod, args, exception);
         }
     }
 }
