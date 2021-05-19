@@ -12,6 +12,7 @@
     <PackageReference Include="FsCheck.Xunit" Version="2.15.2" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.9.4" />
     <PackageReference Include="Moq" Version="4.16.1" />
+    <PackageReference Include="OpenTelemetry.Api" Version="1.0.0-rc1.1" />
     <PackageReference Include="System.Linq.Async" Version="5.0.0" />
     <PackageReference Include="System.Reactive.Linq" Version="5.0.0" />
     <PackageReference Include="xunit" Version="2.4.1" />
@@ -26,7 +27,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Src\DotNetX.Logging\DotNetX.Logging.csproj" />
+    <ProjectReference Include="..\..\Src\DotNetX.OpenTelemetry\DotNetX.OpenTelemetry.csproj" />
     <ProjectReference Include="..\..\Src\DotNetX\DotNetX.csproj" />
   </ItemGroup>
 

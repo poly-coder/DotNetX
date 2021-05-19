@@ -473,6 +473,12 @@ namespace DotNetX.Logging
                 extract);
         }
 
+        public LoggingInterceptorBuilder LogParameter<T>(
+            Func<T, object?> extract) =>
+            LogParameter(
+                typeof(T),
+                obj => obj is T t ? extract(t) : null);
+
         public LoggingInterceptorBuilder LogParameter(
             string name,
             Func<object?, object?> extract)
@@ -492,12 +498,6 @@ namespace DotNetX.Logging
                     parameterName == name,
                 extract);
         }
-
-        public LoggingInterceptorBuilder LogParameter<T>(
-            Func<T, object?> extract) =>
-            LogParameter(
-                typeof(T),
-                obj => obj is T t ? extract(t) : null);
 
         public LoggingInterceptorBuilder LogParameter(
             string methodName,
@@ -1345,7 +1345,7 @@ namespace DotNetX.Logging
                 return (_, _) => null;
             }
 
-            private static readonly ConcurrentDictionary<Type, PropertyInfo[]> metadataPropertoesCache =
+            private static readonly ConcurrentDictionary<Type, PropertyInfo[]> metadataPropertiesCache =
                 new ConcurrentDictionary<Type, PropertyInfo[]>();
 
             private static readonly HashSet<Type> SystemTypes = new HashSet<Type>
@@ -1484,7 +1484,7 @@ namespace DotNetX.Logging
 
                 var type = metadata.GetType();
 
-                var properties = metadataPropertoesCache.GetOrAdd(
+                var properties = metadataPropertiesCache.GetOrAdd(
                     type,
                     t => t
                         .GetProperties(BindingFlags.Public | BindingFlags.Instance)

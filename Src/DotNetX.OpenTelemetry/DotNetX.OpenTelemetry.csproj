@@ -2,20 +2,20 @@
 
   <PropertyGroup>
     <TargetFramework>net5.0</TargetFramework>
-    <PackageId>DotNetX.Logging</PackageId>
-    <Version>0.0.3</Version>
+    <PackageId>DotNetX.OpenTelemetry</PackageId>
+    <Version>0.0.1</Version>
     <Authors>Iskander Sierra</Authors>
     <Company>PolyCoder</Company>
     <Product>PolyCoder CSharp Framework</Product>
-    <Description>Basic and common functionality to be used in DotNet Logging</Description>
+    <Description>Basic and common functionality to be used in DotNet OpenTelemetry</Description>
     <PackageProjectUrl>https://github.com/poly-coder/DotNetX</PackageProjectUrl>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
-    <AssemblyName>DotNetX.Logging</AssemblyName>
+    <AssemblyName>DotNetX.OpenTelemetry</AssemblyName>
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="5.0.0" />
+    <PackageReference Include="OpenTelemetry.Api" Version="1.0.0-rc1.1" />
     <PackageReference Include="System.Linq" Version="4.3.0" />
   </ItemGroup>
 

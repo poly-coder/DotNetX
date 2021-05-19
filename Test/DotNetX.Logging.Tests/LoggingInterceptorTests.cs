@@ -4139,6 +4139,5 @@ namespace DotNetX.Logging.Tests
 
             IObservable<int> ObservableMethod(string arg1);
         }
-
     }
 }
