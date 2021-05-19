@@ -111,13 +111,106 @@ namespace DotNetX.OpenTelemetry.Tests
 
             activity.Verify(
                 e => e.SetTag(It.IsAny<string>(), It.IsAny<object>()),
-                Times.Never);
+                Times.Exactly(2));
+
+            activity.Verify(
+                e => e.SetTag("otel.status_code", 200),
+                Times.Once);
+
+            activity.Verify(
+                e => e.SetTag("error", false),
+                Times.Once);
 
             activity.Verify(
                 e => e.Stop(),
                 Times.Once);
         }
-        
+
+        [Fact]
+        public void CallVoidMethodThrow()
+        {
+            // Given
+            var target = new Mock<IDummyTarget>(MockBehavior.Loose);
+            target.Setup(e => e.Database).Returns("mydb");
+            target.Setup(e => e.Container).Returns("mycontainer");
+            target
+                .Setup(e => e.VoidMethod(It.IsAny<string>()))
+                .Throws(new FormatException("Oops"));
+
+            var activity = new Mock<IActivity>(MockBehavior.Loose);
+
+            var activitySource = new Mock<IActivitySource>(MockBehavior.Loose);
+            activitySource
+                .Setup(e => e.StartActivity(
+                    It.IsAny<string>(),
+                    It.IsAny<ActivityKind>(),
+                    It.IsAny<ActivityContext>(),
+                    It.IsAny<ActivityTagsCollection>(),
+                    It.IsAny<IEnumerable<ActivityLink>>(),
+                    It.IsAny<DateTimeOffset>()))
+                .Returns(activity.Object);
+
+            var options = new OpenTelemetryInterceptorOptions();
+
+            var builder = new OpenTelemetryInterceptorBuilder()
+                .WithActivitySource(activitySource.Object)
+                .WithActivityKind(ActivityKind.Consumer)
+                .WithTypeName("CustomType")
+                .WithOptions(options)
+                .TagWith("common.tag", "common value")
+                .TagTarget<IDummyTarget>(t => new { t.Database, t.Container })
+                .TagParameter<string>("arg1", arg1 => new { Arg1 = arg1 })
+                .TagResult<int>(result => new { Result = result })
+                .TagError<FormatException>(e => new { Message = e.Message });
+
+            var interceptor = builder.Build();
+
+            var intercepted = interceptor.Intercept(target.Object);
+
+            // When
+            Action action = () => intercepted.VoidMethod("value1");
+
+            // Then
+            action.Should().Throw<FormatException>();
+
+            target.Verify(e => e.VoidMethod("value1"), Times.Once);
+
+            activitySource.Verify(
+                e => e.StartActivity(
+                    "CustomType.VoidMethod",
+                    ActivityKind.Consumer,
+                    It.IsAny<ActivityContext>(),
+                    It.Is<ActivityTagsCollection>(tags =>
+                        tags.Count == 4 &&
+                        tags["common.tag"] == "common value" &&
+                        tags["Database"] == "mydb" &&
+                        tags["Container"] == "mycontainer" &&
+                        tags["Arg1"] == "value1"),
+                    null,
+                    It.IsAny<DateTimeOffset>()),
+                Times.Once);
+
+            activity.Verify(
+                e => e.SetTag(It.IsAny<string>(), It.IsAny<object>()),
+                Times.Exactly(3));
+
+            activity.Verify(
+                e => e.SetTag("Message", "Oops"),
+                Times.Once);
+
+            activity.Verify(
+                e => e.SetTag("otel.status_code", 500),
+                Times.Once);
+
+            activity.Verify(
+                e => e.SetTag("error", true),
+                Times.Once);
+
+            activity.Verify(
+                e => e.Stop(),
+                Times.Once);
+        }
+
         [Fact]
         public void CallSyncMethod()
         {
@@ -316,7 +409,15 @@ namespace DotNetX.OpenTelemetry.Tests
 
             activity.Verify(
                 e => e.SetTag(It.IsAny<string>(), It.IsAny<object>()),
-                Times.Never);
+                Times.Exactly(2));
+
+            activity.Verify(
+                e => e.SetTag("otel.status_code", 200),
+                Times.Once);
+
+            activity.Verify(
+                e => e.SetTag("error", false),
+                Times.Once);
 
             activity.Verify(
                 e => e.Stop(),
@@ -458,7 +559,15 @@ namespace DotNetX.OpenTelemetry.Tests
 
             activity.Verify(
                 e => e.SetTag(It.IsAny<string>(), It.IsAny<object>()),
-                Times.Never);
+                Times.Exactly(2));
+
+            activity.Verify(
+                e => e.SetTag("otel.status_code", 200),
+                Times.Once);
+
+            activity.Verify(
+                e => e.SetTag("error", false),
+                Times.Once);
 
             activity.Verify(
                 e => e.Stop(),

@@ -3,7 +3,7 @@
   <PropertyGroup>
     <TargetFramework>net5.0</TargetFramework>
     <PackageId>DotNetX.OpenTelemetry</PackageId>
-    <Version>0.0.1</Version>
+    <Version>0.0.2</Version>
     <Authors>Iskander Sierra</Authors>
     <Company>PolyCoder</Company>
     <Product>PolyCoder CSharp Framework</Product>

@@ -985,6 +985,9 @@ namespace DotNetX.OpenTelemetry
             {
                 if (state.Activity != null)
                 {
+                    state.Activity.SetTag(OTEL_STATUS_CODE, 200);
+                    state.Activity.SetTag(ERROR, false);
+
                     try
                     {
                         var resultTags = state.GetResultTags(result);
@@ -1005,11 +1008,17 @@ namespace DotNetX.OpenTelemetry
                 }
             }
 
+            private const string OTEL_STATUS_CODE = "otel.status_code";
+            private const string ERROR = "error";
+
             public void Error(OpenTelemetryInterceptorState state, object target, MethodInfo targetMethod, object?[]? args,
                 Exception exception)
             {
                 if (state.Activity != null)
                 {
+                    state.Activity.SetTag(OTEL_STATUS_CODE, 500);
+                    state.Activity.SetTag(ERROR, true);
+
                     try
                     {
                         var errorTags = state.GetErrorTags(exception);
