@@ -37,6 +37,6 @@ namespace DotNetX
             Func<T, P> getProperty,
             IEqualityComparer<P>? propertyComparer = null)
             where P : notnull =>
-            new PropertyEqualityComparer<T, P>(getProperty, propertyComparer);
+            new (getProperty, propertyComparer);
     }
 }
