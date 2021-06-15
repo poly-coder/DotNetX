@@ -61,6 +61,40 @@ namespace DotNetX
             return await task;
         }
 
+        public async Task<T> WithService<T>(
+            Func<TService, Task<T>> action,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var service = await GetServiceAsync(cancellationToken);
+
+                return await action(service);
+            }
+            catch (Exception exception)
+            {
+                if (IsInvalidatingError(exception))
+                {
+                    await InvalidateAsync(cancellationToken);
+                }
+
+                throw;
+            }
+        }
+
+        public async Task WithService(
+            Func<TService, Task> action,
+            CancellationToken cancellationToken = default)
+        {
+            await WithService(
+                async container =>
+                {
+                    await action(container);
+                    return true;
+                },
+                cancellationToken);
+        }
+
         private async Task<TService> CreateServiceInternal(Guid newSerial, CancellationToken cancellationToken)
         {
             try
@@ -79,18 +113,29 @@ namespace DotNetX
         }
 
         protected abstract Task<TService> CreateService(CancellationToken cancellationToken);
+
+        protected virtual bool IsInvalidatingError(Exception exception) => false;
     }
 
     public class DelegateReliableAsyncService<TService> : ReliableAsyncService<TService>
     {
-        private readonly Func<CancellationToken, Task<TService>> _createService;
+        private readonly Func<CancellationToken, Task<TService>> createService;
+        private readonly Func<Exception, bool> isInvalidatingError;
 
-        public DelegateReliableAsyncService(Func<CancellationToken, Task<TService>> createService)
+        public DelegateReliableAsyncService(
+            Func<CancellationToken, Task<TService>> createService,
+            Func<Exception, bool>? isInvalidatingError = null)
         {
-            _createService = createService ?? throw new ArgumentNullException(nameof(createService));
+            this.createService = createService ?? throw new ArgumentNullException(nameof(createService));
+            this.isInvalidatingError = isInvalidatingError ?? (_ => false);
         }
 
         protected override Task<TService> CreateService(CancellationToken cancellationToken) =>
-            _createService(cancellationToken);
+            createService(cancellationToken);
+
+        protected override bool IsInvalidatingError(Exception exception)
+        {
+            return isInvalidatingError(exception);
+        }
     }
 }
