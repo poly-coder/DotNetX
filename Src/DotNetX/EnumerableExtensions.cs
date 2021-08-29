@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Linq;
 using System.Threading;
@@ -795,8 +796,82 @@ namespace DotNetX
 
             return CachedSource();
         }
-        
+
         #endregion [ Cached ]
+
+
+        #region [ Set ]
+
+        public static IEnumerable<T> Subtract<T>(
+            this IEnumerable<T> source,
+            IEnumerable<T> other,
+            IEqualityComparer<T>? comparer = null)
+        {
+            comparer ??= EqualityComparer<T>.Default;
+
+            var set = new HashSet<T>(other, comparer);
+
+            return source.Where(v => !set.Contains(v));
+        }
+
+        [SuppressMessage("ReSharper", "PossibleMultipleEnumeration")]
+        public static IEnumerable<T> OutsideOfInterception<T>(
+            this IEnumerable<T> source,
+            IEnumerable<T> other,
+            IEqualityComparer<T>? comparer = null)
+        {
+            comparer ??= EqualityComparer<T>.Default;
+
+            source = source.Cached();
+            other = other.Cached();
+
+            var intersection = new HashSet<T>(source.Intersect(other, comparer), comparer);
+
+            return source.Concat(other).Where(v => !intersection.Contains(v));
+        }
+
+        public static bool HaveSameElements<T>(
+            this IEnumerable<T> source,
+            IEnumerable<T> other,
+            IEqualityComparer<T>? comparer = null)
+        {
+            return !source.OutsideOfInterception(other, comparer).Any();
+        }
+
+        #endregion
+
+
+        #region [ Windows ]
+
+        public static IEnumerable<IReadOnlyCollection<T>> WindowsSized<T>(
+            this IEnumerable<T> source,
+            int windowSize,
+            bool includeLastPartialWindow = true)
+        {
+            if (source == null) throw new ArgumentNullException(nameof(source));
+            if (windowSize <= 0) throw new ArgumentOutOfRangeException(nameof(windowSize));
+
+            var window = new List<T>(windowSize);
+
+            foreach (var item in source)
+            {
+                window.Add(item);
+
+                if (window.Count >= windowSize)
+                {
+                    yield return window;
+
+                    window = new List<T>(windowSize);
+                }
+            }
+
+            if (includeLastPartialWindow && window.Count > 0)
+            {
+                yield return window;
+            }
+        }
+
+        #endregion [ Windows ]
     }
 
     public class StructuralEnumerableEqualityComparer<T> : IEqualityComparer<IEnumerable<T>>, IEqualityComparer
