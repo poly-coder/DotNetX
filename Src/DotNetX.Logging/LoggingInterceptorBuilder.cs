@@ -17,19 +17,23 @@ namespace DotNetX.Logging
     {
         private bool built;
 
+        #region [ Clone ]
+
         public LoggingInterceptorBuilder Clone()
         {
             var clone = (LoggingInterceptorBuilder)this.MemberwiseClone();
 
-            clone.loggerCategoryNames = new Dictionary<Type, string>(loggerCategoryNames);
+            clone.loggerCategoryNames.AddRange(loggerCategoryNames);
 
             clone.options = options.Clone();
             
-            clone.methodsPredicates = new List<Func<MethodInfo, bool>>(methodsPredicates);
+            clone.methodsPredicates.AddRange(methodsPredicates);
 
-            clone.parametersExtractors = new List<ParametersExtractor>(parametersExtractors);
+            clone.treatErrorsPredicates.AddRange(treatErrorsPredicates);
+
+            clone.parametersExtractors.AddRange(parametersExtractors);
             
-            clone.resultExtractors = new List<ResultExtractor>(resultExtractors);
+            clone.resultExtractors.AddRange(resultExtractors);
 
             return clone;
         }
@@ -39,13 +43,15 @@ namespace DotNetX.Logging
             return this.Clone();
         }
 
+        #endregion
+
         #region [ Logger / LoggerFactory ]
 
         private ILoggerFactory? loggerFactory;
         private ILogger? logger;
         private Func<ILoggerFactory, MethodInfo, ILogger>? loggerFromMethod;
         private Func<MethodInfo, ILogger>? statefulLoggerFromMethod;
-        private Dictionary<Type, string> loggerCategoryNames = new Dictionary<Type, string>();
+        private readonly Dictionary<Type, string> loggerCategoryNames = new();
 
         public LoggingInterceptorBuilder WithLoggerFactory(ILoggerFactory loggerFactory)
         {
@@ -207,7 +213,7 @@ namespace DotNetX.Logging
         #region [ Filters ]
 
         private bool includeByDefault = true;
-        private List<Func<MethodInfo, bool>> methodsPredicates = new List<Func<MethodInfo, bool>>();
+        private readonly List<Func<MethodInfo, bool>> methodsPredicates = new();
 
         public LoggingInterceptorBuilder DoNotInterceptIf(Func<MethodInfo, bool> predicate)
         {
@@ -230,10 +236,7 @@ namespace DotNetX.Logging
 
         public LoggingInterceptorBuilder DoNotInterceptIfNamed(string methodName)
         {
-            if (methodName is null)
-            {
-                throw new ArgumentNullException(nameof(methodName));
-            }
+            if (methodName is null) throw new ArgumentNullException(nameof(methodName));
 
             return DoNotInterceptIf(method => method.Name == methodName);
         }
@@ -309,6 +312,136 @@ namespace DotNetX.Logging
 
         #endregion [ Filters ]
 
+        #region [ SkipException ]
+
+        private readonly List<Func<MethodInfo, Exception, bool>> treatErrorsPredicates = new();
+
+        public LoggingInterceptorBuilder SkipExceptionIf(Func<MethodInfo, Exception, bool> predicate)
+        {
+            if (predicate is null) throw new ArgumentNullException(nameof(predicate));
+
+            CheckNotBuilt();
+            treatErrorsPredicates.Add(predicate);
+            return this;
+        }
+
+        public LoggingInterceptorBuilder SkipExceptionIf(Func<Exception, bool> predicate)
+        {
+            if (predicate == null) throw new ArgumentNullException(nameof(predicate));
+
+            return SkipExceptionIf((_, exception) => predicate(exception));
+        }
+
+        public LoggingInterceptorBuilder SkipException(
+            string methodName,
+            Type exceptionType,
+            Func<Exception, bool>? predicate = null)
+        {
+            if (methodName is null) throw new ArgumentNullException(nameof(methodName));
+            if (exceptionType == null) throw new ArgumentNullException(nameof(exceptionType));
+
+            Func<MethodInfo, Exception, bool> innerPredicate =
+                predicate == null
+                    ? (method, exception) =>
+                        method.Name == methodName && 
+                        exceptionType.IsInstanceOfType(exception)
+                    : (method, exception) => 
+                        method.Name == methodName && 
+                        exceptionType.IsInstanceOfType(exception) && 
+                        predicate(exception);
+
+            return SkipExceptionIf(innerPredicate);
+        }
+
+        public LoggingInterceptorBuilder SkipException<TException>(
+            string methodName,
+            Func<TException, bool>? predicate = null)
+            where TException : Exception
+        {
+            if (methodName is null) throw new ArgumentNullException(nameof(methodName));
+
+            Func<MethodInfo, Exception, bool> innerPredicate =
+                predicate == null
+                    ? (method, exception) =>
+                        method.Name == methodName &&
+                        exception is TException
+                    : (method, exception) =>
+                        method.Name == methodName &&
+                        exception is TException ex && 
+                        predicate(ex);
+
+            return SkipExceptionIf(innerPredicate);
+        }
+
+        public LoggingInterceptorBuilder SkipException(
+            Regex pattern,
+            Type exceptionType,
+            Func<Exception, bool>? predicate = null)
+        {
+            if (pattern is null) throw new ArgumentNullException(nameof(pattern));
+            if (exceptionType == null) throw new ArgumentNullException(nameof(exceptionType));
+
+            Func<MethodInfo, Exception, bool> innerPredicate =
+                predicate == null
+                    ? (method, exception) =>
+                        pattern.IsMatch(method.Name) && 
+                        exceptionType.IsInstanceOfType(exception)
+                    : (method, exception) =>
+                        pattern.IsMatch(method.Name) && 
+                        exceptionType.IsInstanceOfType(exception) && 
+                        predicate(exception);
+
+            return SkipExceptionIf(innerPredicate);
+        }
+
+        public LoggingInterceptorBuilder SkipException<TException>(
+            Regex pattern,
+            Func<TException, bool>? predicate = null)
+            where TException : Exception
+        {
+            if (pattern is null) throw new ArgumentNullException(nameof(pattern));
+
+            Func<MethodInfo, Exception, bool> innerPredicate =
+                predicate == null
+                    ? (method, exception) =>
+                        pattern.IsMatch(method.Name) &&
+                        exception is TException
+                    : (method, exception) =>
+                        pattern.IsMatch(method.Name) &&
+                        exception is TException ex && 
+                        predicate(ex);
+
+            return SkipExceptionIf(innerPredicate);
+        }
+
+        public LoggingInterceptorBuilder SkipException(
+            Type exceptionType, 
+            Func<Exception, bool>? predicate = null)
+        {
+            if (exceptionType == null) throw new ArgumentNullException(nameof(exceptionType));
+
+            Func<Exception, bool> innerPredicate =
+                    predicate == null 
+                        ? exceptionType.IsInstanceOfType
+                        : exception => exceptionType.IsInstanceOfType(exception) && predicate(exception);
+
+            return SkipExceptionIf(innerPredicate);
+        }
+
+        public LoggingInterceptorBuilder SkipException<TException>(
+            Func<TException, bool>? predicate = null)
+            where TException: Exception
+        {
+            Func<Exception, bool> innerPredicate =
+                    predicate == null 
+                        ? exception => exception is TException
+                        : exception => exception is TException ex && predicate(ex);
+
+            return SkipExceptionIf(innerPredicate);
+        }
+
+        #endregion
+
         #region [ WithParameters ]
 
         private Func<MethodInfo, object?[]?, object?>? getParameters;
@@ -317,7 +450,7 @@ namespace DotNetX.Logging
             Func<MethodInfo, Type, string, bool> Predicate,
             Func<object?, object?> Extract);
 
-        private List<ParametersExtractor> parametersExtractors = new List<ParametersExtractor>();
+        private readonly List<ParametersExtractor> parametersExtractors = new List<ParametersExtractor>();
 
         public LoggingInterceptorBuilder WithParameters(Func<MethodInfo, object?[]?, object?> getParameters)
         {
@@ -552,7 +685,7 @@ namespace DotNetX.Logging
             Func<MethodInfo, Type, bool> Predicate,
             Func<object?, object?> Extract);
 
-        private List<ResultExtractor> resultExtractors = new List<ResultExtractor>();
+        private readonly List<ResultExtractor> resultExtractors = new();
 
         public LoggingInterceptorBuilder WithResult(Func<MethodInfo, object?, object?> getResult)
         {
@@ -763,6 +896,7 @@ namespace DotNetX.Logging
             private readonly LoggingInterceptorOptions options;
 
             private readonly IReadOnlyCollection<Func<MethodInfo, bool>> methodsPredicates;
+            private readonly Func<MethodInfo, Exception, bool> treatErrorAsComplete;
 
             private readonly Func<MethodInfo, ILogger> loggerFactory;
 
@@ -784,6 +918,7 @@ namespace DotNetX.Logging
                 loggerFactory = CreateLoggerFactory(builder);
                 getParameters = CreateGetParameters(builder);
                 getResult = CreateGetResult(builder);
+                treatErrorAsComplete = CreateTreatErrorAsComplete(builder);
             }
 
             public bool InterceptEnumerables => interceptEnumerables;
@@ -820,7 +955,10 @@ namespace DotNetX.Logging
 
             #region [ Stages ]
 
-            public LoggingInterceptorState Before(object target, MethodInfo targetMethod, object?[]? args)
+            public LoggingInterceptorState Before(
+                object target,
+                MethodInfo targetMethod,
+                object?[]? args)
             {
                 var state = PrepareState(target, targetMethod, args);
 
@@ -852,7 +990,12 @@ namespace DotNetX.Logging
                 return state;
             }
 
-            public void After(LoggingInterceptorState state, object target, MethodInfo targetMethod, object?[]? args, object? result)
+            public void After(
+                LoggingInterceptorState state,
+                object target,
+                MethodInfo targetMethod,
+                object?[]? args,
+                object? result)
             {
                 state.Watch.Stop();
 
@@ -915,7 +1058,12 @@ namespace DotNetX.Logging
                 }
             }
 
-            public void Next(LoggingInterceptorState state, object target, MethodInfo targetMethod, object?[]? args, object? value)
+            public void Next(
+                LoggingInterceptorState state,
+                object target,
+                MethodInfo targetMethod,
+                object?[]? args,
+                object? value)
             {
                 if (state.Logger.IsEnabled(options.NextLogLevel))
                 {
@@ -976,7 +1124,11 @@ namespace DotNetX.Logging
                 }
             }
 
-            public void Complete(LoggingInterceptorState state, object target, MethodInfo targetMethod, object?[]? args)
+            public void Complete(
+                LoggingInterceptorState state,
+                object target,
+                MethodInfo targetMethod,
+                object?[]? args)
             {
                 state.Watch.Stop();
 
@@ -1008,9 +1160,20 @@ namespace DotNetX.Logging
                 }
             }
 
-            public void Error(LoggingInterceptorState state, object target, MethodInfo targetMethod, object?[]? args, Exception exception)
+            public void Error(
+                LoggingInterceptorState state,
+                object target,
+                MethodInfo targetMethod,
+                object?[]? args,
+                Exception exception)
             {
                 state.Watch.Stop();
+
+                if (treatErrorAsComplete(targetMethod, exception))
+                {
+                    Complete(state, target, targetMethod, args);
+                    return;
+                }
 
                 if (state.Logger.IsEnabled(options.ErrorLogLevel))
                 {
@@ -1505,6 +1668,16 @@ namespace DotNetX.Logging
                             return Enumerable.Empty<KeyValuePair<string, object?>>();
                         }
                     });
+            }
+
+            private Func<MethodInfo, Exception, bool> CreateTreatErrorAsComplete(LoggingInterceptorBuilder builder)
+            {
+                var predicates = builder.treatErrorsPredicates.AsReadOnly();
+
+                bool ResultFunc(MethodInfo method, Exception exception) => 
+                    predicates.Any(p => p(method, exception));
+
+                return ResultFunc;
             }
 
             #endregion [ Internal ]

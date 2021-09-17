@@ -221,6 +221,136 @@ namespace DotNetX.OpenTelemetry
 
         #endregion [ Filters ]
 
+        #region [ SkipException ]
+
+        private readonly List<Func<MethodInfo, Exception, bool>> treatErrorsPredicates = new();
+
+        public OpenTelemetryInterceptorBuilder SkipExceptionIf(Func<MethodInfo, Exception, bool> predicate)
+        {
+            if (predicate is null) throw new ArgumentNullException(nameof(predicate));
+
+            CheckNotBuilt();
+            treatErrorsPredicates.Add(predicate);
+            return this;
+        }
+
+        public OpenTelemetryInterceptorBuilder SkipExceptionIf(Func<Exception, bool> predicate)
+        {
+            if (predicate == null) throw new ArgumentNullException(nameof(predicate));
+
+            return SkipExceptionIf((_, exception) => predicate(exception));
+        }
+
+        public OpenTelemetryInterceptorBuilder SkipException(
+            string methodName,
+            Type exceptionType,
+            Func<Exception, bool>? predicate = null)
+        {
+            if (methodName is null) throw new ArgumentNullException(nameof(methodName));
+            if (exceptionType == null) throw new ArgumentNullException(nameof(exceptionType));
+
+            Func<MethodInfo, Exception, bool> innerPredicate =
+                predicate == null
+                    ? (method, exception) =>
+                        method.Name == methodName &&
+                        exceptionType.IsInstanceOfType(exception)
+                    : (method, exception) =>
+                        method.Name == methodName &&
+                        exceptionType.IsInstanceOfType(exception) &&
+                        predicate(exception);
+
+            return SkipExceptionIf(innerPredicate);
+        }
+
+        public OpenTelemetryInterceptorBuilder SkipException<TException>(
+            string methodName,
+            Func<TException, bool>? predicate = null)
+            where TException : Exception
+        {
+            if (methodName is null) throw new ArgumentNullException(nameof(methodName));
+
+            Func<MethodInfo, Exception, bool> innerPredicate =
+                predicate == null
+                    ? (method, exception) =>
+                        method.Name == methodName &&
+                        exception is TException
+                    : (method, exception) =>
+                        method.Name == methodName &&
+                        exception is TException ex &&
+                        predicate(ex);
+
+            return SkipExceptionIf(innerPredicate);
+        }
+
+        public OpenTelemetryInterceptorBuilder SkipException(
+            Regex pattern,
+            Type exceptionType,
+            Func<Exception, bool>? predicate = null)
+        {
+            if (pattern is null) throw new ArgumentNullException(nameof(pattern));
+            if (exceptionType == null) throw new ArgumentNullException(nameof(exceptionType));
+
+            Func<MethodInfo, Exception, bool> innerPredicate =
+                predicate == null
+                    ? (method, exception) =>
+                        pattern.IsMatch(method.Name) &&
+                        exceptionType.IsInstanceOfType(exception)
+                    : (method, exception) =>
+                        pattern.IsMatch(method.Name) &&
+                        exceptionType.IsInstanceOfType(exception) &&
+                        predicate(exception);
+
+            return SkipExceptionIf(innerPredicate);
+        }
+
+        public OpenTelemetryInterceptorBuilder SkipException<TException>(
+            Regex pattern,
+            Func<TException, bool>? predicate = null)
+            where TException : Exception
+        {
+            if (pattern is null) throw new ArgumentNullException(nameof(pattern));
+
+            Func<MethodInfo, Exception, bool> innerPredicate =
+                predicate == null
+                    ? (method, exception) =>
+                        pattern.IsMatch(method.Name) &&
+                        exception is TException
+                    : (method, exception) =>
+                        pattern.IsMatch(method.Name) &&
+                        exception is TException ex &&
+                        predicate(ex);
+
+            return SkipExceptionIf(innerPredicate);
+        }
+
+        public OpenTelemetryInterceptorBuilder SkipException(
+            Type exceptionType,
+            Func<Exception, bool>? predicate = null)
+        {
+            if (exceptionType == null) throw new ArgumentNullException(nameof(exceptionType));
+
+            Func<Exception, bool> innerPredicate =
+                    predicate == null
+                        ? exceptionType.IsInstanceOfType
+                        : exception => exceptionType.IsInstanceOfType(exception) && predicate(exception);
+
+            return SkipExceptionIf(innerPredicate);
+        }
+
+        public OpenTelemetryInterceptorBuilder SkipException<TException>(
+            Func<TException, bool>? predicate = null)
+            where TException : Exception
+        {
+            Func<Exception, bool> innerPredicate =
+                    predicate == null
+                        ? exception => exception is TException
+                        : exception => exception is TException ex && predicate(ex);
+
+            return SkipExceptionIf(innerPredicate);
+        }
+
+        #endregion
+
         #region [ Predicates and Extractors ]
 
         private static Func<MethodInfo, Type, string, bool> WhenInternal(string? methodName, Type? type, string? name) =>
@@ -905,6 +1035,7 @@ namespace DotNetX.OpenTelemetry
 
             private readonly bool includeByDefault;
             private readonly ReadOnlyCollection<Func<MethodInfo, bool>> methodsPredicates;
+            private readonly Func<MethodInfo, Exception, bool> treatErrorAsComplete;
 
             private readonly ReadOnlyCollection<KeyValuePair<string, object?>> commonTags;
 
@@ -931,6 +1062,7 @@ namespace DotNetX.OpenTelemetry
                 getBeforeTags = CreateBeforeTags(builder);
                 getResultTags = CreateGetResultTags(builder);
                 getErrorTags = CreateGetErrorTags(builder);
+                treatErrorAsComplete = CreateTreatErrorAsComplete(builder);
             }
 
             public bool InterceptAsync => interceptAsync;
@@ -963,7 +1095,10 @@ namespace DotNetX.OpenTelemetry
 
             #region [ Stages ]
 
-            public OpenTelemetryInterceptorState Before(object target, MethodInfo targetMethod, object?[]? args)
+            public OpenTelemetryInterceptorState Before(
+                object target,
+                MethodInfo targetMethod,
+                object?[]? args)
             {
                 var state = PrepareState(target, targetMethod, args);
 
@@ -980,7 +1115,11 @@ namespace DotNetX.OpenTelemetry
                 return state;
             }
 
-            public void After(OpenTelemetryInterceptorState state, object target, MethodInfo targetMethod, object?[]? args,
+            public void After(
+                OpenTelemetryInterceptorState state,
+                object target,
+                MethodInfo targetMethod,
+                object?[]? args,
                 object? result)
             {
                 if (state.Activity != null)
@@ -1011,9 +1150,19 @@ namespace DotNetX.OpenTelemetry
             private const string OTEL_STATUS_CODE = "otel.status_code";
             private const string ERROR = "error";
 
-            public void Error(OpenTelemetryInterceptorState state, object target, MethodInfo targetMethod, object?[]? args,
+            public void Error(
+                OpenTelemetryInterceptorState state,
+                object target,
+                MethodInfo targetMethod,
+                object?[]? args,
                 Exception exception)
             {
+                if (treatErrorAsComplete(targetMethod, exception))
+                {
+                    After(state, target, targetMethod, args, null);
+                    return;
+                }
+
                 if (state.Activity != null)
                 {
                     state.Activity.SetTag(OTEL_STATUS_CODE, 500);
@@ -1630,6 +1779,16 @@ namespace DotNetX.OpenTelemetry
                             return Enumerable.Empty<KeyValuePair<string, object?>>();
                         }
                     });
+            }
+
+            private Func<MethodInfo, Exception, bool> CreateTreatErrorAsComplete(OpenTelemetryInterceptorBuilder builder)
+            {
+                var predicates = builder.treatErrorsPredicates.AsReadOnly();
+
+                bool ResultFunc(MethodInfo method, Exception exception) =>
+                    predicates.Any(p => p(method, exception));
+
+                return ResultFunc;
             }
 
             #endregion [ Internal ]
